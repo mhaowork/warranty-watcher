@@ -12,6 +12,5 @@ export interface Device {
   hasWarrantyInfo?: boolean;
   warrantyStartDate?: string;
   warrantyEndDate?: string;
-  warrantyStatus?: 'active' | 'expired' | 'unknown';
   id?: string; // For source system identification
 } 

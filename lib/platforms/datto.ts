@@ -43,8 +43,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
         // This device already has warranty info
         hasWarrantyInfo: true,
         warrantyStartDate: '2022-01-15',
-        warrantyEndDate: '2025-01-15',
-        warrantyStatus: 'active'
+        warrantyEndDate: '2058-01-15'
       },
       {
         id: 'dev-3',
@@ -66,8 +65,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
         // This device already has warranty info (expired)
         hasWarrantyInfo: true,
         warrantyStartDate: '2020-03-10',
-        warrantyEndDate: '2023-03-10',
-        warrantyStatus: 'expired'
+        warrantyEndDate: '2023-03-10'
       },
       {
         id: 'dev-5',

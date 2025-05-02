@@ -1,5 +1,6 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
+import { inferWarrantyStatus } from '../utils/warrantyUtils';
 
 export async function getHpWarrantyInfo(
   serialNumber: string,
@@ -20,14 +21,18 @@ export async function getHpWarrantyInfo(
     const randomMonths = Math.floor(Math.random() * 36);
     const endDate = new Date(today.getFullYear(), today.getMonth() + randomMonths, today.getDate());
     
-    // Determine status based on end date
-    const status = endDate > today ? 'active' : 'expired';
+    // Get the formatted dates
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    // Use the utility function to determine status
+    const status = inferWarrantyStatus(endDateStr);
     
     return {
       serialNumber,
       manufacturer: Manufacturer.HP,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: startDateStr,
+      endDate: endDateStr,
       status,
       productDescription: 'HP EliteBook 840 G8',
       coverageDetails: [

@@ -1,5 +1,6 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
+import { inferWarrantyStatus } from '../utils/warrantyUtils';
 
 export async function getDellWarrantyInfo(
   serialNumber: string,
@@ -20,14 +21,18 @@ export async function getDellWarrantyInfo(
     const randomMonths = Math.floor(Math.random() * 48) - 24; // Random months between -24 and +24
     const endDate = new Date(today.getFullYear(), today.getMonth() + randomMonths, today.getDate());
     
-    // Determine status based on end date
-    const status = endDate > today ? 'active' : 'expired';
+    // Get the formatted dates
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    // Use the utility function to determine status
+    const status = inferWarrantyStatus(endDateStr);
     
     return {
       serialNumber,
       manufacturer: Manufacturer.DELL,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: startDateStr,
+      endDate: endDateStr,
       status,
       productDescription: 'Dell Latitude 5420',
       coverageDetails: [

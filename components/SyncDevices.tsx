@@ -13,6 +13,7 @@ import { parseCSVData } from '../lib/platforms/csv';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { inferWarrantyStatus } from '../lib/utils/warrantyUtils';
 
 interface SyncOptions {
   writeBackToSource: boolean;
@@ -117,7 +118,7 @@ export default function SyncDevices() {
                 manufacturer: device.manufacturer,
                 startDate: device.warrantyStartDate || '',
                 endDate: device.warrantyEndDate || '',
-                status: device.warrantyStatus || 'unknown',
+                status: inferWarrantyStatus(device.warrantyEndDate),
                 productDescription: device.model,
                 skipped: true
               };

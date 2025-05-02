@@ -2,6 +2,10 @@
 
 A warranty information management system that bridges the gap between IT management platforms and manufacturer warranty databases. This system democratizes warranty lookups, making it accessible and transparent for IT professionals and managed service providers (MSPs).
 
+
+![Demo Screenshot](public/demo.png)
+
+
 ## Features
 
 - **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information

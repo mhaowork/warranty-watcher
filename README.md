@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Warranty Watcher
+
+A warranty information management system that bridges the gap between IT management platforms and manufacturer warranty databases. This system democratizes warranty lookups, making it accessible and transparent for IT professionals and managed service providers (MSPs).
+
+## Features
+
+- **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information
+- **Manufacturer API Integration:** Query multiple manufacturer warranty APIs to determine warranty status
+- **Local Storage:** All configuration is stored in the browser's local storage for privacy
+- **CSV Import:** Import device information via CSV file
+- **Reporting:** Generate and export warranty status reports
+
+## Supported Platforms
+
+- **PSA Tools**
+  - None yet (future support planned)
+
+- **RMM Platforms**
+  - Datto RMM
+
+- **Other**
+  - CSV Files (for standalone reporting)
+
+## Supported Manufacturers
+
+- Dell
+- HP
+
+## Technology Stack
+
+- Next.js
+- TypeScript
+- TailwindCSS
+- Shadcn UI
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18.0.0 or later
+- npm or yarn
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository
+   ```
+   git clone https://github.com/yourusername/warranty-watcher.git
+   cd warranty-watcher
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies
+   ```
+   npm install
+   # or
+   yarn install
+   ```
 
-## Learn More
+3. Run the development server
+   ```
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Usage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Configure manufacturer API credentials (Dell, HP, etc.)
+2. Configure platform credentials (Datto RMM)
+3. Sync devices from your platform or upload a CSV file
+4. View and export warranty information
 
-## Deploy on Vercel
+## Acknowledgments
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Shadcn UI for the beautiful UI components
+- Next.js team for the amazing framework 

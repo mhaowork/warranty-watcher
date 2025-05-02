@@ -3,7 +3,7 @@ import { WarrantyInfo } from '../../types/warranty';
 
 export async function getDellWarrantyInfo(
   serialNumber: string,
-  apiKey: string
+  apiKey: string | undefined
 ): Promise<WarrantyInfo> {
   try {
     // In a real implementation, this would call the Dell API
@@ -17,7 +17,7 @@ export async function getDellWarrantyInfo(
     // Generate a random end date between 0-24 months from now
     const today = new Date();
     const startDate = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
-    const randomMonths = Math.floor(Math.random() * 24);
+    const randomMonths = Math.floor(Math.random() * 48) - 24; // Random months between -24 and +24
     const endDate = new Date(today.getFullYear(), today.getMonth() + randomMonths, today.getDate());
     
     // Determine status based on end date

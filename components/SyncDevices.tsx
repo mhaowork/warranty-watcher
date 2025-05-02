@@ -10,6 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import WarrantyResults from './WarrantyResults';
 import { parseCSVData } from '../lib/platforms/csv';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+
+interface SyncOptions {
+  writeBackToSource: boolean;
+  skipExistingWarrantyInfo: boolean;
+}
 
 export default function SyncDevices() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,42 +26,103 @@ export default function SyncDevices() {
   const [results, setResults] = useState<WarrantyInfo[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [csvData, setCsvData] = useState<string | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(Platform.DATTO_RMM);
+  const [syncOptions, setSyncOptions] = useState<SyncOptions>({
+    writeBackToSource: false,
+    skipExistingWarrantyInfo: true
+  });
   
-  async function startDattoSync() {
+  // Handle sync options changes
+  const handleSyncOptionChange = (option: keyof SyncOptions, value: boolean) => {
+    setSyncOptions(prev => ({
+      ...prev,
+      [option]: value
+    }));
+  };
+
+  // Handle platform selection change
+  const handlePlatformChange = (value: string) => {
+    setSelectedPlatform(value as Platform);
+    // Reset devices and results when platform changes
+    setDevices([]);
+    setResults([]);
+  };
+  
+  async function fetchDevicesFromPlatform() {
+    setIsLoading(true);
+    setProgress(0);
+    setResults([]);
+    setDevices([]);
+    
+    try {
+      // 1. Get credentials from local storage
+      const platformCreds = getPlatformCredentials();
+      
+      // 2. Fetch devices from selected platform
+      const response = await fetch('/api/platform-data/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          platform: selectedPlatform,
+          credentials: platformCreds[selectedPlatform]
+        })
+      });
+      
+      if (!response.ok) throw new Error(`Failed to fetch devices from ${selectedPlatform}`);
+      
+      const fetchedDevices = await response.json();
+      setDevices(fetchedDevices);
+      
+      return fetchedDevices;
+    } catch (error) {
+      console.error('Fetch failed:', error);
+      alert('Failed to fetch devices: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  
+  async function processDevices(devicesToProcess: Device[]) {
+    if (!devicesToProcess.length) {
+      alert('No devices to process');
+      return;
+    }
+    
     setIsLoading(true);
     setProgress(0);
     setResults([]);
     
     try {
-      // 1. Get credentials from local storage
-      const platformCreds = getPlatformCredentials();
+      // Get manufacturer credentials
       const manufacturerCreds = getManufacturerCredentials();
+      // Get platform credentials
+      const platformCreds = getPlatformCredentials();
       
-      // 2. Fetch devices from platform (Datto)
-      const response = await fetch('/api/platform-data/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          platform: Platform.DATTO_RMM,
-          credentials: platformCreds[Platform.DATTO_RMM]
-        })
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch devices');
-      
-      const fetchedDevices = await response.json();
-      setDevices(fetchedDevices);
-      
-      // 3. Process devices in batches and lookup warranty info
+      // Process devices in batches
       const batchSize = 2; // Small batch size for demo purposes
       const warrantyResults: WarrantyInfo[] = [];
       
-      for (let i = 0; i < fetchedDevices.length; i += batchSize) {
-        const batch = fetchedDevices.slice(i, i + batchSize);
+      for (let i = 0; i < devicesToProcess.length; i += batchSize) {
+        const batch = devicesToProcess.slice(i, i + batchSize);
         
         // Process batch in parallel
-        const batchPromises = batch.map(async (device: Device) => {
+        const batchPromises = batch.map(async (device) => {
           try {
+            // Skip devices with existing warranty info if that option is selected
+            if (syncOptions.skipExistingWarrantyInfo && device.hasWarrantyInfo) {
+              console.log(`Skipping ${device.serialNumber} - already has warranty info`);
+              return {
+                serialNumber: device.serialNumber,
+                manufacturer: device.manufacturer,
+                startDate: device.warrantyStartDate || '',
+                endDate: device.warrantyEndDate || '',
+                status: device.warrantyStatus || 'unknown',
+                productDescription: device.model,
+                skipped: true
+              };
+            }
+            
             const response = await fetch('/api/warranty', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -68,7 +137,37 @@ export default function SyncDevices() {
               throw new Error(`Failed to lookup warranty for ${device.serialNumber}`);
             }
             
-            return await response.json();
+            const warranty = await response.json();
+            let writtenBack = false;
+            
+            // If write back option is selected, update the source
+            if (syncOptions.writeBackToSource && device.id) {
+              console.log(`Writing back warranty info for ${device.serialNumber} to ${selectedPlatform}`);
+              
+              try {
+                const updateResponse = await fetch('/api/platform-data/update', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    platform: selectedPlatform,
+                    deviceId: device.id,
+                    warrantyInfo: warranty,
+                    credentials: platformCreds[selectedPlatform]
+                  })
+                });
+                
+                if (updateResponse.ok) {
+                  writtenBack = true;
+                  console.log(`Successfully updated warranty for ${device.serialNumber} in ${selectedPlatform}`);
+                } else {
+                  console.error(`Failed to update warranty for ${device.serialNumber} in ${selectedPlatform}`);
+                }
+              } catch (updateError) {
+                console.error('Error writing back warranty info:', updateError);
+              }
+            }
+            
+            return { ...warranty, writtenBack };
           } catch (error) {
             console.error('Error during warranty lookup:', error);
             // Return a default "unknown" warranty record
@@ -77,7 +176,8 @@ export default function SyncDevices() {
               manufacturer: device.manufacturer,
               startDate: '',
               endDate: '',
-              status: 'unknown'
+              status: 'unknown',
+              error: true
             };
           }
         });
@@ -86,15 +186,23 @@ export default function SyncDevices() {
         warrantyResults.push(...batchResults);
         
         // Update progress
-        setProgress(Math.min(100, Math.round((i + batch.length) / fetchedDevices.length * 100)));
+        setProgress(Math.min(100, Math.round((i + batch.length) / devicesToProcess.length * 100)));
         setResults([...warrantyResults]); // Update results as they come in
       }
     } catch (error) {
-      console.error('Sync failed:', error);
-      alert('Sync failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error('Processing failed:', error);
+      alert('Processing failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsLoading(false);
       setProgress(100);
+    }
+  }
+  
+  // Start sync process for platform-based sources
+  async function startPlatformSync() {
+    const fetchedDevices = await fetchDevicesFromPlatform();
+    if (fetchedDevices && fetchedDevices.length > 0) {
+      await processDevices(fetchedDevices);
     }
   }
   
@@ -120,71 +228,7 @@ export default function SyncDevices() {
   }
   
   async function processCsvDevices() {
-    if (!devices.length) {
-      alert('Please upload a CSV file first');
-      return;
-    }
-    
-    setIsLoading(true);
-    setProgress(0);
-    setResults([]);
-    
-    try {
-      // Get manufacturer credentials
-      const manufacturerCreds = getManufacturerCredentials();
-      
-      // Process devices in batches
-      const batchSize = 2; // Small batch size for demo purposes
-      const warrantyResults: WarrantyInfo[] = [];
-      
-      for (let i = 0; i < devices.length; i += batchSize) {
-        const batch = devices.slice(i, i + batchSize);
-        
-        // Process batch in parallel
-        const batchPromises = batch.map(async (device) => {
-          try {
-            const response = await fetch('/api/warranty', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                serialNumber: device.serialNumber,
-                manufacturer: device.manufacturer,
-                credentials: manufacturerCreds[device.manufacturer]
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Failed to lookup warranty for ${device.serialNumber}`);
-            }
-            
-            return await response.json();
-          } catch (error) {
-            console.error('Error during warranty lookup:', error);
-            // Return a default "unknown" warranty record
-            return {
-              serialNumber: device.serialNumber,
-              manufacturer: device.manufacturer,
-              startDate: '',
-              endDate: '',
-              status: 'unknown'
-            };
-          }
-        });
-        
-        const batchResults = await Promise.all(batchPromises);
-        warrantyResults.push(...batchResults);
-        
-        // Update progress
-        setProgress(Math.min(100, Math.round((i + batch.length) / devices.length * 100)));
-        setResults([...warrantyResults]); // Update results as they come in
-      }
-    } catch (error) {
-      console.error('CSV processing failed:', error);
-      alert('CSV processing failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsLoading(false);
-      setProgress(100);
-    }
+    await processDevices(devices);
   }
   
   function exportToCSV() {
@@ -196,9 +240,9 @@ export default function SyncDevices() {
     // Create CSV data
     const csvContent = 
       "data:text/csv;charset=utf-8," + 
-      "Serial Number,Manufacturer,Status,Start Date,End Date,Product Description\n" + 
+      "Serial Number,Manufacturer,Status,Start Date,End Date,Product Description,Written Back,Skipped\n" + 
       results.map(item => 
-        `${item.serialNumber},${item.manufacturer},${item.status},${item.startDate},${item.endDate},${item.productDescription || ''}`
+        `${item.serialNumber},${item.manufacturer},${item.status},${item.startDate},${item.endDate},${item.productDescription || ''},${item.writtenBack ? 'Yes' : 'No'},${item.skipped ? 'Yes' : 'No'}`
       ).join("\n");
     
     // Create download link
@@ -220,20 +264,80 @@ export default function SyncDevices() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="datto">
+        <div className="mb-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-medium mb-2">Sync Options</h3>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="writeBack" 
+                  checked={syncOptions.writeBackToSource}
+                  onCheckedChange={(checked) => {
+                    const isChecked = checked === true;
+                    handleSyncOptionChange('writeBackToSource', isChecked);
+                    // If write back is disabled, automatically set skipExistingWarrantyInfo to false
+                    if (!isChecked) {
+                      handleSyncOptionChange('skipExistingWarrantyInfo', false);
+                    }
+                  }}
+                />
+                <Label htmlFor="writeBack">
+                  Write warranty information back to source
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="skipExisting" 
+                  checked={syncOptions.skipExistingWarrantyInfo}
+                  disabled={!syncOptions.writeBackToSource}
+                  onCheckedChange={(checked) => 
+                    handleSyncOptionChange('skipExistingWarrantyInfo', checked === true)
+                  }
+                />
+                <Label htmlFor="skipExisting" className={!syncOptions.writeBackToSource ? "text-gray-400" : ""}>
+                  Skip devices with existing warranty information
+                </Label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <Tabs defaultValue="platform">
           <TabsList className="mb-4">
-            <TabsTrigger value="datto">Datto RMM</TabsTrigger>
+            <TabsTrigger value="platform">Platform</TabsTrigger>
             <TabsTrigger value="csv">CSV Upload</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="datto" className="space-y-4">
-            <div className="flex flex-col space-y-4 items-start">
+          <TabsContent value="platform" className="space-y-4">
+            <div className="flex flex-col space-y-4">
+              <div className="w-full">
+                <Label htmlFor="platform" className="mb-2 block">Select Platform</Label>
+                <Select 
+                  value={selectedPlatform} 
+                  onValueChange={handlePlatformChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={Platform.DATTO_RMM}>Datto RMM</SelectItem>
+                    {/* Add other platforms as they become available */}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <Button 
-                onClick={startDattoSync} 
+                onClick={startPlatformSync} 
                 disabled={isLoading}
               >
-                {isLoading ? 'Syncing...' : 'Start Sync from Datto RMM'}
+                {isLoading ? 'Syncing...' : `Start Sync from ${selectedPlatform}`}
               </Button>
+              
+              {devices.length > 0 && !isLoading && (
+                <div className="p-4 bg-gray-50 rounded-md">
+                  <p className="font-medium">Found {devices.length} devices from {selectedPlatform}</p>
+                </div>
+              )}
               
               {isLoading && (
                 <div className="w-full space-y-2">

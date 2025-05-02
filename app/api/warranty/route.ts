@@ -11,11 +11,11 @@ export async function POST(request: Request) {
     switch (manufacturer) {
       case Manufacturer.DELL:
         return NextResponse.json(
-          await getDellWarrantyInfo(serialNumber, credentials.apiKey)
+          await getDellWarrantyInfo(serialNumber, credentials?.apiKey)
         );
       case Manufacturer.HP:
         return NextResponse.json(
-          await getHpWarrantyInfo(serialNumber, credentials.apiKey)
+          await getHpWarrantyInfo(serialNumber, credentials?.apiKey)
         );
       default:
         return NextResponse.json(

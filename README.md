@@ -2,7 +2,7 @@
 
 A warranty information management system that bridges the gap between IT management platforms and manufacturer warranty databases. This system democratizes warranty lookups, making it accessible and transparent for IT professionals and managed service providers (MSPs).
 
-
+A demo with mock data:
 ![Demo Screenshot](public/demo.png)
 
 
@@ -17,32 +17,28 @@ A warranty information management system that bridges the gap between IT managem
 ## Supported Platforms
 
 - **PSA Tools**
-  - None yet (future support planned)
+  - ⏳ None yet (future support planned)
 
 - **RMM Platforms**
-  - Datto RMM
+  - 🚧 Datto RMM (work in progress)
 
 - **Other**
-  - CSV Files (for standalone reporting)
+  - 🚧 CSV Files (for standalone reporting)
 
 ## Supported Manufacturers
 
-- Dell
-- HP
+- 🚧 Dell (work in progress)
+- 🚧 HP (work in progress)
+- ⏳ Lenovo (planned)
+- ⏳ Microsoft (planned)
+- ⏳ Apple (planned)
 
-## Technology Stack
-
-- Next.js
-- TypeScript
-- TailwindCSS
-- Shadcn UI
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18.0.0 or later
-- npm or yarn
 
 ### Installation
 
@@ -55,15 +51,11 @@ A warranty information management system that bridges the gap between IT managem
 2. Install dependencies
    ```
    npm install
-   # or
-   yarn install
    ```
 
 3. Run the development server
    ```
    npm run dev
-   # or
-   yarn dev
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
@@ -72,10 +64,5 @@ A warranty information management system that bridges the gap between IT managem
 
 1. Configure manufacturer API credentials (Dell, HP, etc.)
 2. Configure platform credentials (Datto RMM)
-3. Sync devices from your platform or upload a CSV file
-4. View and export warranty information
-
-## Acknowledgments
-
-- Shadcn UI for the beautiful UI components
-- Next.js team for the amazing framework 
+3. Sync devices from your platform or upload a CSV file. 
+4. View and export warranty information. You can choose to write the warranty info back to the source platform (RMM / PSA)

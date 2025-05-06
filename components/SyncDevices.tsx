@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Platform } from '../types/platform';
 import { Device } from '../types/device';
 import { WarrantyInfo } from '../types/warranty';
@@ -32,6 +32,35 @@ export default function SyncDevices() {
     writeBackToSource: false,
     skipExistingWarrantyInfo: true
   });
+  const [configuredPlatforms, setConfiguredPlatforms] = useState<Platform[]>([]);
+  
+  // Load configured platforms
+  useEffect(() => {
+    const platformCreds = getPlatformCredentials();
+    const configured: Platform[] = [];
+    
+    // Check which platforms have valid credentials
+    if (platformCreds[Platform.DATTO_RMM]?.url && 
+        platformCreds[Platform.DATTO_RMM]?.apiKey && 
+        platformCreds[Platform.DATTO_RMM]?.secretKey) {
+      configured.push(Platform.DATTO_RMM);
+    }
+    
+    if (platformCreds[Platform.NCENTRAL]?.serverUrl && 
+        platformCreds[Platform.NCENTRAL]?.apiToken) {
+      configured.push(Platform.NCENTRAL);
+    }
+    
+    // Always include CSV
+    configured.push(Platform.CSV);
+    
+    setConfiguredPlatforms(configured);
+    
+    // Set default platform to the first configured one (if any)
+    if (configured.length > 0 && configured[0] !== Platform.CSV) {
+      setSelectedPlatform(configured[0]);
+    }
+  }, []);
   
   // Handle sync options changes
   const handleSyncOptionChange = (option: keyof SyncOptions, value: boolean) => {
@@ -321,15 +350,24 @@ export default function SyncDevices() {
                     <SelectValue placeholder="Select a platform" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={Platform.DATTO_RMM}>Datto RMM</SelectItem>
-                    {/* Add other platforms as they become available */}
+                    {configuredPlatforms.includes(Platform.DATTO_RMM) && (
+                      <SelectItem value={Platform.DATTO_RMM}>Datto RMM</SelectItem>
+                    )}
+                    {configuredPlatforms.includes(Platform.NCENTRAL) && (
+                      <SelectItem value={Platform.NCENTRAL}>N-able N-central</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {configuredPlatforms.length <= 1 && (
+                  <p className="mt-2 text-sm text-amber-600">
+                    No platforms configured. Please go to the Configuration page to set up your platforms.
+                  </p>
+                )}
               </div>
               
               <Button 
                 onClick={startPlatformSync} 
-                disabled={isLoading}
+                disabled={isLoading || configuredPlatforms.length <= 1}
               >
                 {isLoading ? 'Syncing...' : `Start Sync from ${selectedPlatform}`}
               </Button>

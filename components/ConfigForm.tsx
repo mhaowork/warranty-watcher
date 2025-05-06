@@ -27,10 +27,38 @@ const manufacturerSchema = z.object({
 // Platform credentials schema
 const platformSchema = z.object({
   [Platform.DATTO_RMM]: z.object({
-    url: z.string().min(1, 'URL is required'),
-    apiKey: z.string().min(1, 'API Key is required'),
-    secretKey: z.string().min(1, 'Secret Key is required'),
-  }),
+    url: z.string().optional(),
+    apiKey: z.string().optional(),
+    secretKey: z.string().optional(),
+  })
+  .refine(
+    data => {
+      // If any field is filled, all fields are required
+      const hasAnyValue = data.url || data.apiKey || data.secretKey;
+      if (!hasAnyValue) return true; // All fields are empty, that's valid
+      return Boolean(data.url && data.apiKey && data.secretKey);
+    },
+    {
+      message: "All Datto RMM fields are required if any of them are filled",
+      path: [] // Shows the error at the object level
+    }
+  ),
+  [Platform.NCENTRAL]: z.object({
+    serverUrl: z.string().optional(),
+    apiToken: z.string().optional(),
+  })
+  .refine(
+    data => {
+      // If any field is filled, all fields are required
+      const hasAnyValue = data.serverUrl || data.apiToken;
+      if (!hasAnyValue) return true; // All fields are empty, that's valid
+      return Boolean(data.serverUrl && data.apiToken);
+    },
+    {
+      message: "All N-central fields are required if any of them are filled",
+      path: [] // Shows the error at the object level
+    }
+  ),
   [Platform.CSV]: z.object({}),
 });
 
@@ -52,6 +80,7 @@ export default function ConfigForm() {
     resolver: zodResolver(platformSchema),
     defaultValues: {
       [Platform.DATTO_RMM]: { url: '', apiKey: '', secretKey: '' },
+      [Platform.NCENTRAL]: { serverUrl: '', apiToken: '' },
       [Platform.CSV]: {},
     },
   });
@@ -65,7 +94,23 @@ export default function ConfigForm() {
     
     const platformCreds = getPlatformCredentials();
     if (Object.keys(platformCreds).length > 0) {
-      platformForm.reset(platformCreds);
+      // Ensure all platform fields are defined
+      const mergedPlatformCreds = {
+        ...platformForm.getValues(),
+        ...platformCreds,
+        [Platform.DATTO_RMM]: {
+          url: '',
+          apiKey: '',
+          secretKey: '',
+          ...platformCreds[Platform.DATTO_RMM]
+        },
+        [Platform.NCENTRAL]: {
+          serverUrl: '',
+          apiToken: '',
+          ...platformCreds[Platform.NCENTRAL]
+        }
+      };
+      platformForm.reset(mergedPlatformCreds);
     }
   }, [manufacturerForm, platformForm]);
   
@@ -227,6 +272,49 @@ export default function ConfigForm() {
                             </FormControl>
                             <FormDescription>
                               Your Datto RMM Secret Key
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">N-able N-central</h3>
+                    <div className="space-y-4">
+                      <FormField
+                        control={platformForm.control}
+                        name={`${Platform.NCENTRAL}.serverUrl`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Server URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter N-central Server URL" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Your N-central instance URL (e.g., https://yourserver.n-able.com)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={platformForm.control}
+                        name={`${Platform.NCENTRAL}.apiToken`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>API Token (JWT)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password"
+                                placeholder="Enter N-central API Token" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Your N-central User-API Token (JWT) generated from the N-central UI
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

@@ -36,27 +36,18 @@ export default function SyncDevices() {
   
   // Load configured platforms
   useEffect(() => {
-    const platformCreds = getPlatformCredentials();
     const configured: Platform[] = [];
     
-    // Check which platforms have valid credentials
-    if (platformCreds[Platform.DATTO_RMM]?.url && 
-        platformCreds[Platform.DATTO_RMM]?.apiKey && 
-        platformCreds[Platform.DATTO_RMM]?.secretKey) {
-      configured.push(Platform.DATTO_RMM);
-    }
-    
-    if (platformCreds[Platform.NCENTRAL]?.serverUrl && 
-        platformCreds[Platform.NCENTRAL]?.apiToken) {
-      configured.push(Platform.NCENTRAL);
-    }
+    // Include all main platforms regardless of credentials
+    configured.push(Platform.DATTO_RMM);
+    configured.push(Platform.NCENTRAL);
     
     // Always include CSV
     configured.push(Platform.CSV);
     
     setConfiguredPlatforms(configured);
     
-    // Set default platform to the first configured one (if any)
+    // Set default platform to the first one
     if (configured.length > 0 && configured[0] !== Platform.CSV) {
       setSelectedPlatform(configured[0]);
     }
@@ -358,16 +349,30 @@ export default function SyncDevices() {
                     )}
                   </SelectContent>
                 </Select>
-                {configuredPlatforms.length <= 1 && (
-                  <p className="mt-2 text-sm text-amber-600">
-                    No platforms configured. Please go to the Configuration page to set up your platforms.
-                  </p>
-                )}
+                
+                {/* Check for missing credentials and show demo mode notice */}
+                {(() => {
+                  const platformCreds = getPlatformCredentials();
+                  const hasPlatformCredentials = selectedPlatform === Platform.DATTO_RMM ? 
+                    (platformCreds[Platform.DATTO_RMM]?.url && platformCreds[Platform.DATTO_RMM]?.apiKey && platformCreds[Platform.DATTO_RMM]?.secretKey) :
+                  selectedPlatform === Platform.NCENTRAL ?
+                    (platformCreds[Platform.NCENTRAL]?.serverUrl && platformCreds[Platform.NCENTRAL]?.apiToken) :
+                  true;
+                  
+                  if (!hasPlatformCredentials) {
+                    return (
+                      <p className="mt-2 text-sm text-amber-600">
+                        No credentials configured for {selectedPlatform}. Running in demo mode with sample data.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
               
               <Button 
                 onClick={startPlatformSync} 
-                disabled={isLoading || configuredPlatforms.length <= 1}
+                disabled={isLoading}
               >
                 {isLoading ? 'Syncing...' : `Start Sync from ${selectedPlatform}`}
               </Button>

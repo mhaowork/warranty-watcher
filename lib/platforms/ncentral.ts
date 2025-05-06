@@ -1,6 +1,7 @@
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance } from 'axios';
+import MockAdapter from 'axios-mock-adapter';
 
 interface NCentralCredentials {
   serverUrl?: string;
@@ -24,9 +25,57 @@ interface DeviceAsset {
 // Interface for Device item in response
 interface NCentralDeviceItem {
   deviceId: string;
-  // Keeping minimal fields needed for device identification
+  // Additional fields we might need
+  hostname?: string;
+  clientId?: string;
+  clientName?: string;
+  // Other fields
   [key: string]: unknown;
 }
+
+// Mock data for demo mode
+const mockDevices = [
+  {
+    id: 'nc-1',
+    serialNumber: 'DELL00987654',
+    manufacturer: Manufacturer.DELL,
+    model: 'OptiPlex 7070',
+    hostname: 'NCENTRAL-DEV1',
+    clientId: 'NC-CLIENT-1',
+    clientName: 'Worldwide Enterprises'
+  },
+  {
+    id: 'nc-2',
+    serialNumber: 'HP00654321',
+    manufacturer: Manufacturer.HP,
+    model: 'EliteBook 850 G7',
+    hostname: 'NCENTRAL-DEV2',
+    clientId: 'NC-CLIENT-1', 
+    clientName: 'Worldwide Enterprises'
+  },
+  {
+    id: 'nc-3',
+    serialNumber: 'DELL00135790',
+    manufacturer: Manufacturer.DELL,
+    model: 'Latitude 7400',
+    hostname: 'NCENTRAL-DEV3',
+    clientId: 'NC-CLIENT-2',
+    clientName: 'Acme IT Solutions'
+  },
+  {
+    id: 'nc-4',
+    serialNumber: 'HP00246810',
+    manufacturer: Manufacturer.HP,
+    model: 'ProBook 440 G7',
+    hostname: 'NCENTRAL-DEV4',
+    clientId: 'NC-CLIENT-2',
+    clientName: 'Acme IT Solutions',
+    // This device already has warranty info
+    hasWarrantyInfo: true,
+    warrantyStartDate: '2022-05-20',
+    warrantyEndDate: '2025-05-20'
+  }
+];
 
 /**
  * Helper function to determine manufacturer based on system info
@@ -47,97 +96,104 @@ function determineManufacturer(mfgName: string): Manufacturer {
 }
 
 /**
+ * Sets up axios mock adapter for demo mode
+ */
+function setupMockAdapter(axiosInstance: AxiosInstance): void {
+  const mock = new MockAdapter(axiosInstance, { onNoMatch: "passthrough" });
+  
+  // Mock authentication endpoint
+  mock.onPost(/.*\/api\/auth\/authenticate/).reply(200, {
+    tokens: {
+      access: {
+        token: 'mock-access-token-for-demo'
+      }
+    }
+  });
+  
+  // Mock devices endpoint
+  mock.onGet(/.*\/api\/devices$/).reply(200, {
+    data: mockDevices.map(device => ({
+      deviceId: device.id,
+      // Add any other fields needed for device list response
+    }))
+  });
+  
+  // Mock individual device asset endpoints
+  mockDevices.forEach(device => {
+    mock.onGet(new RegExp(`.*\/api\/devices\/${device.id}\/assets`)).reply(200, {
+      computersystem: {
+        serialnumber: device.serialNumber,
+        model: device.model,
+        manufacturer: device.manufacturer === Manufacturer.DELL ? 'Dell Inc.' : 'HP Inc.'
+      },
+      device: {
+        deleted: 'false',
+        deviceid: device.id
+      }
+    });
+  });
+}
+
+/**
  * Fetches devices from N-central
  * 
  * This function can operate in two modes:
- * 1. Demo mode - returns mock data (default)
- * 2. Real API mode - calls the N-central API (when credentials are provided)
+ * 1. Demo mode - returns mock data (when credentials are incomplete)
+ * 2. Real API mode - calls the N-central API (when complete credentials are provided)
+ * 
+ * Example usage:
+ * 
+ * // To use real API:
+ * const devices = await fetchNCentralDevices({
+ *   serverUrl: 'https://your-ncentral-server.com',
+ *   apiToken: 'your-real-api-token'
+ * });
+ * 
+ * // To use demo mode but with real server URL (mocked API calls):
+ * const devices = await fetchNCentralDevices({
+ *   serverUrl: 'https://your-ncentral-server.com'
+ *   // Missing apiToken will trigger demo mode with mocked responses
+ * });
  */
 export async function fetchNCentralDevices(credentials?: NCentralCredentials): Promise<Device[]> {
   try {
     // Use default or provided credentials
-    const serverUrl = credentials?.serverUrl || 'https://your-ncentral-server.com';
-    const apiToken = credentials?.apiToken || 'demo-api-token';
-    const useRealApi = Boolean(credentials?.serverUrl && credentials?.apiToken);
+    const serverUrl = credentials?.serverUrl || 'https://demo-ncentral-server.com';
+    const apiToken = credentials?.apiToken || '';
+    
+    // Determine if we should use demo mode based on whether credentials are complete
+    const useDemoMode = !credentials?.serverUrl || !credentials?.apiToken || apiToken.trim() === '';
+    
+    console.log(`Connecting to N-central at ${serverUrl} ${useDemoMode ? '(DEMO MODE)' : ''}`);
 
-    console.log(`Connecting to N-central at ${serverUrl}`);
-
-    // If using demo mode, return mock data
-    if (!useRealApi) {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Return mock data
-      return [
-        {
-          id: 'nc-1',
-          serialNumber: 'DELL00987654',
-          manufacturer: Manufacturer.DELL,
-          model: 'OptiPlex 7070',
-          hostname: 'NCENTRAL-DEV1',
-          clientId: 'NC-CLIENT-1',
-          clientName: 'Worldwide Enterprises'
-        },
-        {
-          id: 'nc-2',
-          serialNumber: 'HP00654321',
-          manufacturer: Manufacturer.HP,
-          model: 'EliteBook 850 G7',
-          hostname: 'NCENTRAL-DEV2',
-          clientId: 'NC-CLIENT-1',
-          clientName: 'Worldwide Enterprises'
-        },
-        {
-          id: 'nc-3',
-          serialNumber: 'DELL00135790',
-          manufacturer: Manufacturer.DELL,
-          model: 'Latitude 7400',
-          hostname: 'NCENTRAL-DEV3',
-          clientId: 'NC-CLIENT-2',
-          clientName: 'Acme IT Solutions'
-        },
-        {
-          id: 'nc-4',
-          serialNumber: 'HP00246810',
-          manufacturer: Manufacturer.HP,
-          model: 'ProBook 440 G7',
-          hostname: 'NCENTRAL-DEV4',
-          clientId: 'NC-CLIENT-2',
-          clientName: 'Acme IT Solutions',
-          // This device already has warranty info
-          hasWarrantyInfo: true,
-          warrantyStartDate: '2022-05-20',
-          warrantyEndDate: '2025-05-20'
-        }
-      ];
-    }
-
-    // Otherwise, use the real API
-    try {
-      const client = await createNCentralClient(serverUrl, apiToken);
-      return await fetchDevicesUsingRealAPI(client);
-    } catch (error) {
-      // More user-friendly error message
-      if (error instanceof Error) {
-        if (error.message.includes('401')) {
-          throw new Error('Authentication failed. Please check your N-central API token.');
-        } else if (error.message.includes('404')) {
-          throw new Error('N-central API endpoint not found. Please check your server URL.');
-        } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
-          throw new Error('Could not connect to N-central server. Please check your server URL and network connection.');
-        }
+    // Create the API client
+    const axiosInstance = axios.create({
+      baseURL: serverUrl,
+      headers: {
+        'Content-Type': 'application/json'
       }
-      // Re-throw the original error if it doesn't match any known patterns
-      throw error;
+    });
+    
+    // If demo mode is needed, set up mocking
+    if (useDemoMode) {
+      setupMockAdapter(axiosInstance);
     }
+    
+    const client = await createNCentralClient(axiosInstance, apiToken);
+    return await fetchDevicesUsingRealAPI(client);
   } catch (error) {
-    console.error('Error fetching devices from N-central:', error);
-    // Throw a user-friendly error
+    // More user-friendly error message
     if (error instanceof Error) {
-      throw error; // Already user-friendly from inner catch
-    } else {
-      throw new Error('Failed to fetch devices from N-central');
+      if (error.message.includes('401')) {
+        throw new Error('Authentication failed. Please check your N-central API token.');
+      } else if (error.message.includes('404')) {
+        throw new Error('N-central API endpoint not found. Please check your server URL.');
+      } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
+        throw new Error('Could not connect to N-central server. Please check your server URL and network connection.');
+      }
     }
+    // Re-throw the original error if it doesn't match any known patterns
+    throw error;
   }
 }
 
@@ -146,14 +202,13 @@ export async function fetchNCentralDevices(credentials?: NCentralCredentials): P
 /**
  * Creates an authenticated N-central API client
  */
-async function createNCentralClient(serverUrl: string, apiToken: string): Promise<AxiosInstance> {
+async function createNCentralClient(axiosInstance: AxiosInstance, apiToken: string): Promise<AxiosInstance> {
   // First, authenticate to get access token
   try {
-    console.log('Authenticating with N-central at', serverUrl);
-    const authResponse = await axios.post(`${serverUrl}/api/auth/authenticate`, {}, {
+    console.log('Authenticating with N-central');
+    const authResponse = await axiosInstance.post(`/api/auth/authenticate`, {}, {
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${apiToken}`
       }
     });
 
@@ -168,16 +223,10 @@ async function createNCentralClient(serverUrl: string, apiToken: string): Promis
     const accessToken = authResponse.data.tokens.access.token;
     console.log('Successfully obtained access token');
 
-    // Create axios instance with base URL and default headers
-    const client = axios.create({
-      baseURL: serverUrl,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      }
-    });
+    // Update the headers with the access token
+    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
-    return client;
+    return axiosInstance;
   } catch (error) {
     console.error('Error authenticating with N-central:', error);
     throw error;
@@ -259,16 +308,16 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
               serialNumber: assetData.computersystem?.serialnumber || '',
               manufacturer: manufacturer,
               model: assetData.computersystem?.model || '',
-              // These fields aren't needed for warranty lookups but are required by Device type
-              // hostname: '',
-              // clientId: '',
-              // clientName: ''
+              // Add hostname and client info if available
+              hostname: device.hostname as string || '',
+              clientId: device.clientId as string || '',
+              clientName: device.clientName as string || ''
             };
             
             result.push(mappedDevice);
-          } catch {
+          } catch (error) {
             // Ignoring specific error details - just log the failure
-            console.error(`Error processing device ${device.deviceId}`);
+            console.error(`Error processing device ${device.deviceId}:`, error);
             // Continue with next device even if this one fails
           }
         }
@@ -284,9 +333,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         if (pageNumber > maxPages && hasMorePages) {
           console.warn(`Reached maximum page limit (${maxPages}). Some devices may not be returned.`);
         }
-      } catch {
-        // Ignoring specific error details - just log the failure
-        console.error(`Error fetching N-central devices page ${pageNumber}`);
+      } catch (error) {
+        console.error(`Error fetching N-central devices page ${pageNumber}:`, error);
         hasMorePages = false;
       }
     }
@@ -294,7 +342,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
     console.log(`Completed fetching devices. Total devices found: ${result.length}`);
     return result;
   } catch (error) {
-    console.error('Error fetching all N-central devices');
+    console.error('Error fetching all N-central devices:', error);
     throw error;
   }
 }

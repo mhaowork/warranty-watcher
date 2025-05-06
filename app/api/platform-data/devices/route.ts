@@ -7,37 +7,18 @@ export async function POST(request: Request) {
   try {
     const { platform, credentials } = await request.json();
     
-    // Validate that we have all required credentials for the platform
-    if (!credentials) {
-      return NextResponse.json(
-        { error: 'Missing credentials for platform' },
-        { status: 400 }
-      );
-    }
+    // Ensure we have at least an empty credentials object
+    const safeCredentials = credentials || {};
     
     switch (platform) {
       case Platform.DATTO_RMM:
-        // Validate all required Datto RMM credentials are present
-        if (!credentials.url || !credentials.apiKey || !credentials.secretKey) {
-          return NextResponse.json(
-            { error: 'Missing required Datto RMM credentials (url, apiKey, secretKey)' },
-            { status: 400 }
-          );
-        }
-        
-        const dattoDevices = await fetchDattoDevices(credentials);
+        // No need to validate credentials anymore - demo mode will be used automatically when incomplete
+        const dattoDevices = await fetchDattoDevices(safeCredentials);
         return NextResponse.json(dattoDevices);
         
       case Platform.NCENTRAL:
-        // Validate all required N-central credentials are present
-        if (!credentials.serverUrl || !credentials.apiToken) {
-          return NextResponse.json(
-            { error: 'Missing required N-central credentials (serverUrl, apiToken)' },
-            { status: 400 }
-          );
-        }
-        
-        const ncentralDevices = await fetchNCentralDevices(credentials);
+        // No need to validate credentials anymore - demo mode will be used automatically when incomplete
+        const ncentralDevices = await fetchNCentralDevices(safeCredentials);
         return NextResponse.json(ncentralDevices);
         
       case Platform.CSV:

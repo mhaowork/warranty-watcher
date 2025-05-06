@@ -84,17 +84,34 @@ interface SitesPage {
  * Fetches devices from Datto RMM
  * 
  * This function can operate in two modes:
- * 1. Demo mode - returns mock data (default)
- * 2. Real API mode - calls the Datto RMM API (when useRealApi=true)
+ * 1. Demo mode - returns mock data (when credentials are incomplete)
+ * 2. Real API mode - calls the Datto RMM API (when complete credentials are provided)
+ * 
+ * Example usage:
+ * 
+ * // To use real API:
+ * const devices = await fetchDattoDevices({
+ *   url: 'https://your-datto-url.com/api',
+ *   apiKey: 'your-api-key',
+ *   secretKey: 'your-secret-key'
+ * });
+ * 
+ * // To use demo mode:
+ * const devices = await fetchDattoDevices({
+ *   // Missing or incomplete credentials will trigger demo mode
+ * });
  */
 export async function fetchDattoDevices(credentials?: DattoCredentials): Promise<Device[]> {
   try {
     // Use default or provided credentials
-    const url = credentials?.url || 'https://merlot-api.centrastage.net/api';
-    const apiKey = credentials?.apiKey || 'demo-api-key';
-    const useRealApi = false;
+    const url = credentials?.url || 'https://demo-datto-rmm.com/api';
+    const apiKey = credentials?.apiKey || '';
+    const secretKey = credentials?.secretKey || '';
+    
+    // Determine if we should use real API based on whether we have complete credentials
+    const useRealApi = Boolean(credentials?.url && credentials?.apiKey && credentials?.secretKey);
 
-    console.log(`Connecting to Datto RMM at ${url} with API key ${apiKey}`);
+    console.log(`Connecting to Datto RMM at ${url} ${!useRealApi ? '(DEMO MODE)' : ''}`);
 
     // If using demo mode, return mock data
     if (!useRealApi) {
@@ -205,7 +222,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
     }
 
     // Otherwise, use the real API
-    const client = await createDattoRMMClient(url, apiKey);
+    const client = await createDattoRMMClient(url, apiKey, secretKey);
     return await fetchDevicesUsingRealAPI(client);
   } catch (error) {
     console.error('Error fetching devices from Datto RMM:', error);
@@ -218,7 +235,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
 /**
  * Creates an authenticated Datto RMM API client
  */
-async function createDattoRMMClient(apiUrl: string, apiKey: string): Promise<AxiosInstance> {
+async function createDattoRMMClient(apiUrl: string, apiKey: string, secretKey: string): Promise<AxiosInstance> {
   // Create axios instance with base URL and default headers
   const client = axios.create({
     baseURL: apiUrl,
@@ -233,7 +250,7 @@ async function createDattoRMMClient(apiUrl: string, apiKey: string): Promise<Axi
 
     // In a real implementation, you would create an HMAC signature here using the secretKey and timestamp
     // const hmacMessage = `${apiKey}${timestamp}`;
-    const hmacSignature = "HMAC_SIGNATURE_PLACEHOLDER";
+    const hmacSignature = secretKey ? `hmac-sha1-${secretKey.substring(0, 6)}...` : "HMAC_SIGNATURE_PLACEHOLDER";
 
     // Create headers properly for axios 1.x
     if (!config.headers) {

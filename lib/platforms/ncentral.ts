@@ -9,76 +9,41 @@ interface NCentralCredentials {
 
 // N-central API types
 interface DeviceAsset {
-  os?: {
-    reportedos?: string;
-    osarchitecture?: string;
-    version?: string;
-  };
   computersystem?: {
     serialnumber?: string;
-    netbiosname?: string;
     model?: string;
-    totalphysicalmemory?: string;
     manufacturer?: string;
   };
   device?: {
-    longname?: string;
     deleted?: string;
-    lastlogin?: string;
-    deviceclass?: string;
     deviceid?: string;
-    uri?: string;
   };
-  processor?: {
-    name?: string;
-    numberofcores?: string;
-    numberofcpus?: string;
-  };
-  networkadapter?: {
-    list?: Array<{
-      ipaddress?: string;
-      _index?: number;
-      dnsserver?: string;
-      description?: string;
-      dhcpserver?: string | null;
-      macaddress?: string;
-      gateway?: string;
-    }>;
-  };
-  _extra?: {
-    [key: string]: unknown;
-  };
-}
-
-// Interface for Device response
-interface NCentralDeviceResponse {
-  data: NCentralDeviceItem[];
-  pageDetails?: {
-    pageNumber: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
-  };
+  // ... other properties
 }
 
 // Interface for Device item in response
 interface NCentralDeviceItem {
-  id: number;
-  name?: string;
-  description?: string;
-  orgUnitId?: number;
+  deviceId: string;
+  // Keeping minimal fields needed for device identification
   [key: string]: unknown;
 }
 
-// Interface for Organization Unit response
-interface NCentralOrgUnitResponse {
-  data: {
-    id: number;
-    name: string;
-    type?: string;
-    description?: string;
-    [key: string]: unknown;
-  };
+/**
+ * Helper function to determine manufacturer based on system info
+ */
+function determineManufacturer(mfgName: string): Manufacturer {
+  const normalized = mfgName.toLowerCase();
+
+  if (normalized.includes('dell')) {
+    return Manufacturer.DELL;
+  } else if (normalized.includes('hp') ||
+    normalized.includes('hewlett') ||
+    normalized.includes('packard')) {
+    return Manufacturer.HP;
+  }
+
+  // Default to DELL if unknown
+  return Manufacturer.DELL;
 }
 
 /**
@@ -148,11 +113,31 @@ export async function fetchNCentralDevices(credentials?: NCentralCredentials): P
     }
 
     // Otherwise, use the real API
-    const client = await createNCentralClient(serverUrl, apiToken);
-    return await fetchDevicesUsingRealAPI(client);
+    try {
+      const client = await createNCentralClient(serverUrl, apiToken);
+      return await fetchDevicesUsingRealAPI(client);
+    } catch (error) {
+      // More user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes('401')) {
+          throw new Error('Authentication failed. Please check your N-central API token.');
+        } else if (error.message.includes('404')) {
+          throw new Error('N-central API endpoint not found. Please check your server URL.');
+        } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ENOTFOUND')) {
+          throw new Error('Could not connect to N-central server. Please check your server URL and network connection.');
+        }
+      }
+      // Re-throw the original error if it doesn't match any known patterns
+      throw error;
+    }
   } catch (error) {
     console.error('Error fetching devices from N-central:', error);
-    return [];
+    // Throw a user-friendly error
+    if (error instanceof Error) {
+      throw error; // Already user-friendly from inner catch
+    } else {
+      throw new Error('Failed to fetch devices from N-central');
+    }
   }
 }
 
@@ -173,16 +158,16 @@ async function createNCentralClient(serverUrl: string, apiToken: string): Promis
     });
 
     console.log('Authentication response received');
-    
+
     // Extract the access token from the nested response structure
     if (!authResponse.data?.tokens?.access?.token) {
       console.error('Access token not found in response');
       throw new Error('Access token not found in authentication response');
     }
-    
+
     const accessToken = authResponse.data.tokens.access.token;
     console.log('Successfully obtained access token');
-    
+
     // Create axios instance with base URL and default headers
     const client = axios.create({
       baseURL: serverUrl,
@@ -202,7 +187,7 @@ async function createNCentralClient(serverUrl: string, apiToken: string): Promis
 /**
  * Fetches device asset information
  */
-async function getDeviceAsset(client: AxiosInstance, deviceId: number): Promise<DeviceAsset> {
+async function getDeviceAsset(client: AxiosInstance, deviceId: string): Promise<DeviceAsset> {
   try {
     const response = await client.get(`/api/devices/${deviceId}/assets`);
     return response.data;
@@ -219,69 +204,71 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
   try {
     const result: Device[] = [];
     
-    // Fetch all devices directly instead of iterating through org units
+    // Fetch all devices directly
     let pageNumber = 1;
-    const pageSize = 100;
+    const pageSize = 200;
     let hasMorePages = true;
+    const maxPages = 100; // Limit to prevent excessive API calls
     
-    while (hasMorePages) {
+    while (hasMorePages && pageNumber <= maxPages) {
       try {
-        const response = await client.get<NCentralDeviceResponse>('/api/devices', {
+        console.log(`Fetching devices page ${pageNumber} (${pageSize} items per page)`);
+        const response = await client.get('/api/devices', {
           params: {
             pageSize,
             pageNumber
           }
         });
         
-        const devices = response.data.data || [];
-
-        console.log('Devices:', devices);
+        console.log('API response received');
+        
+        // Based on the example response format, we know devices are in responseData.data
+        const responseData = response.data;
+        const devices: NCentralDeviceItem[] = responseData.data;
+        
+        if (!Array.isArray(devices)) {
+          console.error('Unexpected response format');
+          throw new Error('Unexpected API response format');
+        }
+        
+        console.log(`Found ${devices.length} devices in response`);
+        
+        if (devices.length === 0) {
+          // No more devices to process
+          hasMorePages = false;
+          continue;
+        }
         
         // Process each device
         for (const device of devices) {
           try {
-            const assetData = await getDeviceAsset(client, Number(device.deviceId));
+            const assetData = await getDeviceAsset(client, device.deviceId);
             
             // Skip if deleted
             if (assetData.device?.deleted === 'true') {
               continue;
             }
             
-            // Get organization info for the device
-            let clientName = "Unknown";
-            if (device.orgUnitId) {
-              try {
-                const orgResponse = await client.get<NCentralOrgUnitResponse>(`/api/org-units/${device.orgUnitId}`);
-                clientName = orgResponse.data.data?.name || "Unknown";
-              } catch (err) {
-                console.error(`Error fetching org unit for device ${device.id}:`, err);
-              }
-            }
+            // Use the helper function to determine manufacturer
+            const mfgName = (assetData.computersystem?.manufacturer || '');
+            const manufacturer = determineManufacturer(mfgName);
             
-            // Determine manufacturer enum
-            let manufacturer = Manufacturer.DELL;
-            const mfgName = (assetData.computersystem?.manufacturer || '').toLowerCase();
-            
-            if (mfgName.includes('dell')) {
-              manufacturer = Manufacturer.DELL;
-            } else if (mfgName.includes('hp') || mfgName.includes('hewlett')) {
-              manufacturer = Manufacturer.HP;
-            }
-            
-            // Map to our normalized Device format
+            // Map to our normalized Device format with just the essential fields for warranty lookup
             const mappedDevice: Device = {
-              id: assetData.device?.deviceid,
-              hostname: assetData.device?.longname || assetData.computersystem?.netbiosname || '',
+              id: assetData.device?.deviceid || device.deviceId,
+              serialNumber: assetData.computersystem?.serialnumber || '',
               manufacturer: manufacturer,
               model: assetData.computersystem?.model || '',
-              serialNumber: assetData.computersystem?.serialnumber || '',
-              clientId: device.orgUnitId?.toString() || 'unknown',
-              clientName: clientName
+              // These fields aren't needed for warranty lookups but are required by Device type
+              // hostname: '',
+              // clientId: '',
+              // clientName: ''
             };
             
             result.push(mappedDevice);
-          } catch (error) {
-            console.error(`Error processing device ${device.id}:`, error);
+          } catch {
+            // Ignoring specific error details - just log the failure
+            console.error(`Error processing device ${device.deviceId}`);
             // Continue with next device even if this one fails
           }
         }
@@ -292,15 +279,22 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         } else {
           pageNumber++;
         }
-      } catch (error) {
-        console.error(`Error fetching N-central devices page ${pageNumber}:`, error);
+        
+        // If we've reached the max page limit, log a warning
+        if (pageNumber > maxPages && hasMorePages) {
+          console.warn(`Reached maximum page limit (${maxPages}). Some devices may not be returned.`);
+        }
+      } catch {
+        // Ignoring specific error details - just log the failure
+        console.error(`Error fetching N-central devices page ${pageNumber}`);
         hasMorePages = false;
       }
     }
     
+    console.log(`Completed fetching devices. Total devices found: ${result.length}`);
     return result;
   } catch (error) {
-    console.error('Error fetching all N-central devices:', error);
+    console.error('Error fetching all N-central devices');
     throw error;
   }
-} 
+}

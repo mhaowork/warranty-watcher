@@ -10,7 +10,7 @@ export interface Device {
   
   // Fields for devices that already have warranty info
   hasWarrantyInfo?: boolean;
-  warrantyStartDate?: string;
-  warrantyEndDate?: string;
+  warrantyStartDate?: string; // YYYY-MM-DD
+  warrantyEndDate?: string; // YYYY-MM-DD
   id?: string; // For source system identification
 } 

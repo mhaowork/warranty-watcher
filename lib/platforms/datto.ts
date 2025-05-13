@@ -1,6 +1,6 @@
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosHeaders } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 
 interface DattoCredentials {
   url?: string;
@@ -8,48 +8,36 @@ interface DattoCredentials {
   secretKey?: string;
 }
 
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
 // Datto RMM API types
 interface SystemInfo {
   manufacturer: string;
   model: string;
-  totalPhysicalMemory: number;
-  username: string;
-  dotNetVersion: string;
-  totalCpuCores: number;
 }
 
 interface Bios {
-  instance: string;
-  releaseDate: string;
   serialNumber: string;
-  smBiosVersion: string;
-}
-
-interface BaseBoard {
-  manufacturer: string;
-  product: string;
 }
 
 interface DeviceAudit {
-  portalUrl: string;
-  webRemoteUrl: string;
   systemInfo: SystemInfo;
   bios: Bios;
-  baseBoard: BaseBoard;
-  // Other fields omitted for brevity
+  warrantyInfo?: {
+    warrantyStartDate?: string;
+    warrantyEndDate?: string;
+  };
 }
 
 interface DattoDevice {
-  id: number;
   uid: string;
   hostname: string;
-  description: string;
   deviceClass: string;
-  deviceType: string;
-  online: boolean;
-  siteName: string;
-  siteUid: string;
-  // Other fields omitted for brevity
+  warrantyExpirationDate?: string;
 }
 
 interface DevicesPage {
@@ -60,24 +48,6 @@ interface DevicesPage {
     totalPages: number;
   };
   devices: DattoDevice[];
-}
-
-interface Site {
-  id: number;
-  uid: string;
-  name: string;
-  description: string;
-  deviceCount: number;
-}
-
-interface SitesPage {
-  pageDetails: {
-    pageNumber: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
-  };
-  sites: Site[];
 }
 
 /**
@@ -236,81 +206,75 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
  * Creates an authenticated Datto RMM API client
  */
 async function createDattoRMMClient(apiUrl: string, apiKey: string, secretKey: string): Promise<AxiosInstance> {
+  // First get the OAuth token
+  const tokenResponse = await axios.post<TokenResponse>(
+    `${apiUrl}/auth/oauth/token`,
+    `grant_type=password&username=${apiKey}&password=${secretKey}`,
+    {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      auth: {
+        username: 'public-client',
+        password: 'public'
+      }
+    }
+  );
+
+  const accessToken = tokenResponse.data.access_token;
+
   // Create axios instance with base URL and default headers
   const client = axios.create({
-    baseURL: apiUrl,
+    baseURL: `${apiUrl}/api`,
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`
     }
   });
 
-  // Add request interceptor for authentication
-  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-
-    // In a real implementation, you would create an HMAC signature here using the secretKey and timestamp
-    // const hmacMessage = `${apiKey}${timestamp}`;
-    const hmacSignature = secretKey ? `hmac-sha1-${secretKey.substring(0, 6)}...` : "HMAC_SIGNATURE_PLACEHOLDER";
-
-    // Create headers properly for axios 1.x
-    if (!config.headers) {
-      config.headers = new AxiosHeaders();
+  // Add response interceptor for error handling
+  client.interceptors.response.use(
+    response => response,
+    (error: AxiosError) => {
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            console.error('Bad request:', error.response.data);
+            throw new Error('Invalid request parameters');
+          case 401:
+            console.error('Unauthorized:', error.response.data);
+            throw new Error('Authentication failed');
+          case 403:
+            console.error('Forbidden:', error.response.data);
+            throw new Error('Insufficient permissions');
+          case 404:
+            console.error('Not found:', error.response.data);
+            throw new Error('Resource not found');
+          case 409:
+            console.error('Conflict:', error.response.data);
+            throw new Error('Concurrent modification conflict');
+          case 500:
+            console.error('Server error:', error.response.data);
+            throw new Error('Internal server error');
+          default:
+            console.error('API error:', error.response.data);
+            throw new Error('API request failed');
+        }
+      }
+      throw error;
     }
-
-    config.headers.set('Authorization', `Bearer ${apiKey}`);
-    config.headers.set('X-Datto-Api-Key', apiKey);
-    config.headers.set('X-Datto-Timestamp', timestamp);
-    config.headers.set('X-Datto-Signature', hmacSignature);
-
-    return config;
-  });
+  );
 
   return client;
 }
 
 /**
- * Fetch all sites from Datto RMM
+ * Fetch all devices from Datto RMM
  */
-async function getSites(client: AxiosInstance): Promise<Site[]> {
+async function getAllDevices(client: AxiosInstance): Promise<DattoDevice[]> {
   try {
     // Get first page
-    const response = await client.get<SitesPage>('/v2/site', {
-      params: {
-        pageSize: 100,
-        page: 1
-      }
-    });
-
-    let sites = response.data.sites;
-    const totalPages = response.data.pageDetails.totalPages;
-
-    // If more than one page, fetch the rest
-    if (totalPages > 1) {
-      for (let page = 2; page <= totalPages; page++) {
-        const nextPage = await client.get<SitesPage>('/v2/site', {
-          params: {
-            pageSize: 100,
-            page
-          }
-        });
-        sites = [...sites, ...nextPage.data.sites];
-      }
-    }
-
-    return sites;
-  } catch (error) {
-    console.error('Error fetching Datto RMM sites:', error);
-    throw error;
-  }
-}
-
-/**
- * Fetch devices for a specific site
- */
-async function getDevicesBySite(client: AxiosInstance, siteUid: string): Promise<DattoDevice[]> {
-  try {
-    // Get first page
-    const response = await client.get<DevicesPage>(`/v2/site/${siteUid}/devices`, {
+    const response = await client.get<DevicesPage>('/v2/device', {
       params: {
         pageSize: 100,
         page: 1
@@ -323,7 +287,7 @@ async function getDevicesBySite(client: AxiosInstance, siteUid: string): Promise
     // If more than one page, fetch the rest
     if (totalPages > 1) {
       for (let page = 2; page <= totalPages; page++) {
-        const nextPage = await client.get<DevicesPage>(`/v2/site/${siteUid}/devices`, {
+        const nextPage = await client.get<DevicesPage>('/v2/device', {
           params: {
             pageSize: 100,
             page
@@ -335,7 +299,7 @@ async function getDevicesBySite(client: AxiosInstance, siteUid: string): Promise
 
     return devices;
   } catch (error) {
-    console.error(`Error fetching Datto RMM devices for site ${siteUid}:`, error);
+    console.error('Error fetching Datto RMM devices:', error);
     throw error;
   }
 }
@@ -345,7 +309,7 @@ async function getDevicesBySite(client: AxiosInstance, siteUid: string): Promise
  */
 async function getDeviceAudit(client: AxiosInstance, deviceUid: string): Promise<DeviceAudit> {
   try {
-    const response = await client.get<DeviceAudit>(`/v2/device/${deviceUid}/audit`);
+    const response = await client.get<DeviceAudit>(`/v2/audit/device/${deviceUid}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching Datto RMM device audit for device ${deviceUid}:`, error);
@@ -358,44 +322,76 @@ async function getDeviceAudit(client: AxiosInstance, deviceUid: string): Promise
  */
 async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]> {
   try {
-    const sites = await getSites(client);
+    const devices = await getAllDevices(client);
     const result: Device[] = [];
 
-    // For each site, get devices and audit data
-    for (const site of sites) {
-      const devices = await getDevicesBySite(client, site.uid);
-
-      // For each device, get audit data and map to Device format
-      for (const device of devices) {
-        try {
-          const audit = await getDeviceAudit(client, device.uid);
-
-          // Determine manufacturer enum
-          let manufacturer = Manufacturer.DELL;
-          const mfgName = (audit.systemInfo.manufacturer || '').toLowerCase();
-
-          if (mfgName.includes('dell')) {
-            manufacturer = Manufacturer.DELL;
-          } else if (mfgName.includes('hp') || mfgName.includes('hewlett')) {
-            manufacturer = Manufacturer.HP;
-          }
-
-          // Map to our normalized Device format
-          const mappedDevice: Device = {
-            id: device.uid,
-            hostname: device.hostname,
-            manufacturer: manufacturer,
-            model: audit.systemInfo.model || '',
-            serialNumber: audit.bios.serialNumber || '',
-            clientId: site.uid,
-            clientName: site.name
-          };
-
-          result.push(mappedDevice);
-        } catch (error) {
-          console.error(`Error processing device ${device.hostname} (${device.uid}):`, error);
-          // Continue with next device even if this one fails
+    // Process each device
+    for (const device of devices) {
+      try {
+        // Skip non-device class items (printers, esxihosts, etc)
+        if (device.deviceClass !== 'device') {
+          console.log(`Skipping non-device class item: ${device.hostname} (${device.deviceClass})`);
+          continue;
         }
+
+        const audit = await getDeviceAudit(client, device.uid);
+
+        // Determine manufacturer enum
+        let manufacturer = Manufacturer.DELL;
+        const mfgName = (audit.systemInfo.manufacturer || '').toLowerCase();
+
+        if (mfgName.includes('dell')) {
+          manufacturer = Manufacturer.DELL;
+        } else if (mfgName.includes('hp') || mfgName.includes('hewlett')) {
+          manufacturer = Manufacturer.HP;
+        }
+
+        // EXPERIMENTAL: This code attempts to extract warranty information 
+        // from Datto RMM, but it's not confirmed if Datto actually stores this data.
+        // These fields may not exist in the API response.
+        let hasWarrantyInfo = false;
+        let warrantyStartDate: string | undefined = undefined;
+        let warrantyEndDate: string | undefined = undefined;
+        
+        // EXPERIMENTAL: Check for warranty info in device or audit data
+        if (device.warrantyExpirationDate || 
+            (audit.warrantyInfo && 
+             (audit.warrantyInfo.warrantyEndDate || audit.warrantyInfo.warrantyStartDate))) {
+          
+          hasWarrantyInfo = true;
+          console.log(`EXPERIMENTAL: Found warranty info for device ${device.hostname}`);
+          
+          // EXPERIMENTAL: Extract warranty dates if available
+          if (device.warrantyExpirationDate) {
+            warrantyEndDate = device.warrantyExpirationDate;
+            console.log(`EXPERIMENTAL: Found warranty end date from device data: ${warrantyEndDate}`);
+          } else if (audit.warrantyInfo) {
+            if (audit.warrantyInfo.warrantyEndDate) {
+              warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
+              console.log(`EXPERIMENTAL: Found warranty end date from audit data: ${warrantyEndDate}`);
+            }
+            
+            if (audit.warrantyInfo.warrantyStartDate) {
+              warrantyStartDate = audit.warrantyInfo.warrantyStartDate;
+              console.log(`EXPERIMENTAL: Found warranty start date from audit data: ${warrantyStartDate}`);
+            }
+          }
+        }
+
+        // Map to our normalized Device format
+        const mappedDevice: Device = {
+          id: device.uid,
+          serialNumber: audit.bios.serialNumber || '',
+          manufacturer: manufacturer,
+          hasWarrantyInfo: hasWarrantyInfo,
+          warrantyStartDate: warrantyStartDate,
+          warrantyEndDate: warrantyEndDate
+        };
+
+        result.push(mappedDevice);
+      } catch (error) {
+        console.error(`Error processing device ${device.hostname} (${device.uid}):`, error);
+        // Continue with next device even if this one fails
       }
     }
 

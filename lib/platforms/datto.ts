@@ -42,10 +42,10 @@ interface DattoDevice {
 
 interface DevicesPage {
   pageDetails: {
-    pageNumber: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
+    count: number;
+    totalCount: number;
+    prevPageUrl: string | null;
+    nextPageUrl: string | null;
   };
   devices: DattoDevice[];
 }
@@ -273,27 +273,33 @@ async function createDattoRMMClient(apiUrl: string, apiKey: string, secretKey: s
  */
 async function getAllDevices(client: AxiosInstance): Promise<DattoDevice[]> {
   try {
-    // Get first page
-    const response = await client.get<DevicesPage>('/v2/device', {
+    // Get first page - using the correct endpoint and parameters!
+    const response = await client.get<DevicesPage>('/v2/account/devices', {
       params: {
-        pageSize: 100,
-        page: 1
+        max: 250,
+        page: 0
       }
     });
 
     let devices = response.data.devices;
-    const totalPages = response.data.pageDetails.totalPages;
-
-    // If more than one page, fetch the rest
-    if (totalPages > 1) {
-      for (let page = 2; page <= totalPages; page++) {
-        const nextPage = await client.get<DevicesPage>('/v2/device', {
+    const totalCount = response.data.pageDetails.totalCount;
+    
+    // If we have more devices than what we've fetched, we need more pages
+    if (totalCount > devices.length && response.data.pageDetails.nextPageUrl) {
+      // Extract page number from nextPageUrl
+      const pageMatch = response.data.pageDetails.nextPageUrl.match(/page=(\d+)/);
+      if (pageMatch && pageMatch[1]) {
+        const nextPage = parseInt(pageMatch[1], 10);
+        
+        // Get next page
+        const nextPageResponse = await client.get<DevicesPage>('/v2/account/devices', {
           params: {
-            pageSize: 100,
-            page
+            max: 250,
+            page: nextPage
           }
         });
-        devices = [...devices, ...nextPage.data.devices];
+        
+        devices = [...devices, ...nextPageResponse.data.devices];
       }
     }
 

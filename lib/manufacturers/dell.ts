@@ -1,16 +1,149 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
 import { inferWarrantyStatus } from '../utils/warrantyUtils';
+import axios from 'axios';
+
+// List of Service Level Codes not related to hardware warranties
+const SLC_BLACKLIST = ['D', 'DL', 'PJ', 'PR'];
+
+interface DellTokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+interface DellEntitlement {
+  startDate: string;
+  endDate: string;
+  serviceLevelCode: string;
+  serviceLevelDescription: string;
+}
+
+interface DellWarrantyResponse {
+  entitlements: DellEntitlement[];
+}
+
+// Cache token and its expiration time
+let dellToken: string | null = null;
+let tokenExpiration: Date | null = null;
+
+async function getDellAuthToken(clientId: string, clientSecret: string): Promise<string> {
+  // Check if we have a valid cached token
+  if (dellToken && tokenExpiration && tokenExpiration > new Date()) {
+    return dellToken;
+  }
+
+  // Get new token
+  const authString = `${clientId}:${clientSecret}`;
+  const encodedAuth = Buffer.from(authString).toString('base64');
+  
+  try {
+    const response = await axios.post<DellTokenResponse>(
+      'https://apigtwb2c.us.dell.com/auth/oauth/v2/token',
+      'grant_type=client_credentials',
+      {
+        headers: {
+          'Authorization': `Basic ${encodedAuth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    
+    // Cache the token and set expiration (55 minutes from now to be safe)
+    dellToken = response.data.access_token;
+    tokenExpiration = new Date(Date.now() + 55 * 60 * 1000);
+    
+    return dellToken;
+  } catch (error) {
+    console.error('Error getting Dell auth token:', error);
+    throw new Error('Failed to authenticate with Dell API');
+  }
+}
+
+// Warning: the Dell API integration is still being tested and may not work as expected
+async function fetchDellWarrantyData(
+  serialNumber: string,
+  clientId: string,
+  clientSecret: string
+): Promise<WarrantyInfo> {
+  try {
+    // Get authentication token
+    const token = await getDellAuthToken(clientId, clientSecret);
+    
+    // Call Dell warranty API
+    const response = await axios.get<DellWarrantyResponse>(
+      'https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements',
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          servicetags: serialNumber
+        }
+      }
+    );
+    
+    // Filter out non-hardware warranty entitlements
+    const validEntitlements = response.data.entitlements.filter(
+      e => !SLC_BLACKLIST.includes(e.serviceLevelCode)
+    );
+    
+    if (validEntitlements.length === 0) {
+      throw new Error('No valid warranty entitlements found');
+    }
+    
+    // Sort dates to find start and end dates
+    const startDates = validEntitlements.map(e => new Date(e.startDate)).sort((a, b) => a.getTime() - b.getTime());
+    const endDates = validEntitlements.map(e => new Date(e.endDate)).sort((a, b) => b.getTime() - a.getTime());
+    
+    const startDate = startDates[0].toISOString().split('T')[0];
+    const endDate = endDates[0].toISOString().split('T')[0];
+    
+    // Get unique service descriptions
+    const coverageDetails = Array.from(new Set(
+      validEntitlements.map(e => e.serviceLevelDescription)
+    ));
+    
+    // Determine warranty status
+    const status = inferWarrantyStatus(endDate);
+    
+    return {
+      serialNumber,
+      manufacturer: Manufacturer.DELL,
+      startDate,
+      endDate,
+      status,
+      productDescription: 'Dell Product', // API doesn't seem to provide product name in the sample
+      coverageDetails
+    };
+  } catch (error) {
+    console.error('Error fetching Dell warranty data:', error);
+    throw error;
+  }
+}
 
 export async function getDellWarrantyInfo(
   serialNumber: string,
-  apiKey: string | undefined
+  clientId?: string,
+  clientSecret?: string
 ): Promise<WarrantyInfo> {
+  // Check if both clientId and clientSecret are provided
+  if (clientId && clientSecret) {
+    try {
+      console.log(`Looking up Dell warranty for ${serialNumber} using API`);
+      return await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
+    } catch (error) {
+      console.error('Error using Dell API:', error);
+      console.log('Falling back to mock implementation...');
+    }
+  }
+  
   try {
-    // In a real implementation, this would call the Dell API
-    // For now, we'll simulate a response
+    // For this mock implementation, we'll simulate a response
     
-    console.log(`Looking up Dell warranty for ${serialNumber} with API key ${apiKey}`);
+    console.log('clientId / clientSecret is not provided, falling back to mock implementation');
+    console.log(`Looking up Dell warranty for ${serialNumber} (mock implementation)`);
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));

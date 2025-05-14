@@ -37,7 +37,7 @@ interface DattoDevice {
   uid: string;
   hostname: string;
   deviceClass: string;
-  warrantyExpirationDate?: string;
+  warrantyDate?: string;
 }
 
 interface DevicesPage {
@@ -95,9 +95,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           serialNumber: 'DELL00123456',
           manufacturer: Manufacturer.DELL,
           model: 'Latitude 5420',
-          hostname: 'DESKTOP-ABCDE1',
-          clientId: 'CLIENT-1',
-          clientName: 'Acme Corporation'
+          hostname: 'DESKTOP-ABCDE1'
         },
         {
           id: 'dev-2',
@@ -105,21 +103,16 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           manufacturer: Manufacturer.HP,
           model: 'EliteBook 840 G8',
           hostname: 'DESKTOP-FGHIJ2',
-          clientId: 'CLIENT-1',
-          clientName: 'Acme Corporation',
           // This device already has warranty info
           hasWarrantyInfo: true,
-          warrantyStartDate: '2022-01-15',
-          warrantyEndDate: '2058-01-15'
+          warrantyEndDate: '2025-01-15'
         },
         {
           id: 'dev-3',
           serialNumber: 'DELL00345678',
           manufacturer: Manufacturer.DELL,
           model: 'OptiPlex 7080',
-          hostname: 'DESKTOP-KLMNO3',
-          clientId: 'CLIENT-2',
-          clientName: 'TechNova Solutions'
+          hostname: 'DESKTOP-KLMNO3'
         },
         {
           id: 'dev-4',
@@ -127,11 +120,8 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           manufacturer: Manufacturer.HP,
           model: 'ProBook 450 G8',
           hostname: 'DESKTOP-PQRST4',
-          clientId: 'CLIENT-2',
-          clientName: 'TechNova Solutions',
           // This device already has warranty info (expired)
           hasWarrantyInfo: true,
-          warrantyStartDate: '2020-03-10',
           warrantyEndDate: '2023-03-10'
         },
         {
@@ -139,45 +129,35 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           serialNumber: 'DELL00567890',
           manufacturer: Manufacturer.DELL,
           model: 'XPS 13',
-          hostname: 'LAPTOP-UVWXY5',
-          clientId: 'CLIENT-3',
-          clientName: 'Global Enterprises'
+          hostname: 'LAPTOP-UVWXY5'
         },
         {
           id: 'dev-6',
           serialNumber: 'HP00123456',
           manufacturer: Manufacturer.HP,
           model: 'EliteBook x360',
-          hostname: 'LAPTOP-ZABCD6',
-          clientId: 'CLIENT-3',
-          clientName: 'Global Enterprises'
+          hostname: 'LAPTOP-ZABCD6'
         },
         {
           id: 'dev-7',
           serialNumber: 'DELL00789012',
           manufacturer: Manufacturer.DELL,
           model: 'Precision 5550',
-          hostname: 'WORKSTATION-EFGHI7',
-          clientId: 'CLIENT-3',
-          clientName: 'Global Enterprises'
+          hostname: 'WORKSTATION-EFGHI7'
         },
         {
           id: 'dev-8',
           serialNumber: 'HP00345678',
           manufacturer: Manufacturer.HP,
           model: 'ZBook Studio G7',
-          hostname: 'WORKSTATION-JKLMN8',
-          clientId: 'CLIENT-4',
-          clientName: 'Innovative Tech'
+          hostname: 'WORKSTATION-JKLMN8'
         },
         {
           id: 'dev-9',
           serialNumber: 'DELL00901234',
           manufacturer: Manufacturer.DELL,
           model: 'Latitude 7420',
-          hostname: 'LAPTOP-OPQRS9',
-          clientId: 'CLIENT-4',
-          clientName: 'Innovative Tech'
+          hostname: 'LAPTOP-OPQRS9'
         },
         {
           id: 'dev-10',
@@ -185,8 +165,9 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           manufacturer: Manufacturer.HP,
           model: 'EliteDesk 800 G6',
           hostname: 'DESKTOP-TUVWX10',
-          clientId: 'CLIENT-4',
-          clientName: 'Innovative Tech'
+          // This device has a warranty set to 2026
+          hasWarrantyInfo: true,
+          warrantyEndDate: '2026-10-01'
         }
       ];
     }
@@ -331,6 +312,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
     const devices = await getAllDevices(client);
     const result: Device[] = [];
 
+    console.log(`Processing ${devices.length} devices from Datto RMM...`);
+
     // Process each device
     for (const device of devices) {
       try {
@@ -340,6 +323,11 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           continue;
         }
 
+        console.log(`\nProcessing device: ${device.hostname} (ID: ${device.uid})`);
+        
+        // Log warranty date from device object
+        console.log(`Warranty date from API: ${device.warrantyDate || 'Not set'}`);
+        
         const audit = await getDeviceAudit(client, device.uid);
 
         // Determine manufacturer enum
@@ -352,36 +340,19 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           manufacturer = Manufacturer.HP;
         }
 
-        // EXPERIMENTAL: This code attempts to extract warranty information 
-        // from Datto RMM, but it's not confirmed if Datto actually stores this data.
-        // These fields may not exist in the API response.
+        // Check for warranty information from Datto RMM
         let hasWarrantyInfo = false;
-        let warrantyStartDate: string | undefined = undefined;
         let warrantyEndDate: string | undefined = undefined;
         
-        // EXPERIMENTAL: Check for warranty info in device or audit data
-        if (device.warrantyExpirationDate || 
-            (audit.warrantyInfo && 
-             (audit.warrantyInfo.warrantyEndDate || audit.warrantyInfo.warrantyStartDate))) {
-          
+        // Check for warranty info in device data (primary) or audit data (fallback)
+        if (device.warrantyDate) {
           hasWarrantyInfo = true;
-          console.log(`EXPERIMENTAL: Found warranty info for device ${device.hostname}`);
-          
-          // EXPERIMENTAL: Extract warranty dates if available
-          if (device.warrantyExpirationDate) {
-            warrantyEndDate = device.warrantyExpirationDate;
-            console.log(`EXPERIMENTAL: Found warranty end date from device data: ${warrantyEndDate}`);
-          } else if (audit.warrantyInfo) {
-            if (audit.warrantyInfo.warrantyEndDate) {
-              warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
-              console.log(`EXPERIMENTAL: Found warranty end date from audit data: ${warrantyEndDate}`);
-            }
-            
-            if (audit.warrantyInfo.warrantyStartDate) {
-              warrantyStartDate = audit.warrantyInfo.warrantyStartDate;
-              console.log(`EXPERIMENTAL: Found warranty start date from audit data: ${warrantyStartDate}`);
-            }
-          }
+          warrantyEndDate = device.warrantyDate;
+          console.log(`Found warranty end date from device data: ${warrantyEndDate}`);
+        } else if (audit.warrantyInfo && audit.warrantyInfo.warrantyEndDate) {
+          hasWarrantyInfo = true;
+          warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
+          console.log(`Found warranty end date from audit data: ${warrantyEndDate}`);
         }
 
         // Map to our normalized Device format
@@ -389,8 +360,9 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           id: device.uid,
           serialNumber: audit.bios.serialNumber || '',
           manufacturer: manufacturer,
+          model: audit.systemInfo.model || '',
+          hostname: device.hostname,
           hasWarrantyInfo: hasWarrantyInfo,
-          warrantyStartDate: warrantyStartDate,
           warrantyEndDate: warrantyEndDate
         };
 
@@ -405,5 +377,67 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
   } catch (error) {
     console.error('Error fetching all Datto RMM devices:', error);
     throw error;
+  }
+}
+
+/**
+ * Updates a device's warranty expiration date in Datto RMM
+ * 
+ * This function can operate in two modes:
+ * 1. Demo mode - simulates updating warranty info (when credentials are incomplete)
+ * 2. Real API mode - calls the Datto RMM API (when complete credentials are provided)
+ * 
+ * @param deviceUid The Datto device UID to update
+ * @param warrantyEndDate The warranty expiration date in ISO format (YYYY-MM-DD)
+ * @param credentials Optional Datto credentials
+ * @returns True if update was successful, false otherwise
+ */
+export async function updateDattoWarranty(
+  deviceUid: string, 
+  warrantyEndDate: string, 
+  credentials?: DattoCredentials
+): Promise<boolean> {
+  try {
+    // Use default or provided credentials
+    const url = credentials?.url || '';
+    const apiKey = credentials?.apiKey || '';
+    const secretKey = credentials?.secretKey || '';
+    
+    // Determine if we should use real API based on whether we have complete credentials
+    const useRealApi = Boolean(credentials?.url && credentials?.apiKey && credentials?.secretKey);
+
+    console.log(`Updating warranty for Datto device ${deviceUid} to ${warrantyEndDate} ${!useRealApi ? '(DEMO MODE)' : ''}`);
+
+    // If using demo mode, simulate update
+    if (!useRealApi) {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`[DEMO] Successfully updated warranty date for device ${deviceUid} to ${warrantyEndDate}`);
+      return true;
+    }
+
+    // Use the real API
+    const client = await createDattoRMMClient(url, apiKey, secretKey);
+    
+    // Call the Datto RMM API to update the warranty date
+    const response = await client.post(`/v2/device/${deviceUid}/warranty`, {
+      warrantyDate: warrantyEndDate
+    });
+    
+    // Check if the update was successful
+    if (response.status >= 200 && response.status < 300) {
+      console.log(`Successfully updated warranty expiration date for device ${deviceUid} to ${warrantyEndDate}`);
+      return true;
+    } else {
+      console.error(`Failed to update warranty for device ${deviceUid}: Unexpected status code ${response.status}`);
+      return false;
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error updating warranty for device ${deviceUid}:`, error.message);
+    } else {
+      console.error(`Unknown error updating warranty for device ${deviceUid}:`, error);
+    }
+    return false;
   }
 } 

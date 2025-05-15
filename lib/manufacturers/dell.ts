@@ -161,27 +161,9 @@ async function fetchDellWarrantyData(
   }
 }
 
-export async function getDellWarrantyInfo(
-  serialNumber: string,
-  clientId?: string,
-  clientSecret?: string
-): Promise<WarrantyInfo> {
-  // Check if both clientId and clientSecret are provided
-  if (clientId && clientSecret) {
-    try {
-      console.log(`Looking up Dell warranty for ${serialNumber} using API`);
-      return await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
-    } catch (error) {
-      console.error('Error using Dell API:', error);
-      console.log('Falling back to mock implementation...');
-    }
-  } else {
-    console.log('clientId / clientSecret is not provided, falling back to mock implementation');
-  }
-  
+// Mock Dell data for demos
+async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyInfo> {
   try {
-    // For this mock implementation, we'll simulate a response
-    
     console.log(`Looking up Dell warranty for ${serialNumber} (mock implementation)`);
     
     // Simulate API delay
@@ -222,4 +204,25 @@ export async function getDellWarrantyInfo(
       status: 'unknown',
     };
   }
+}
+
+export async function getDellWarrantyInfo(
+  serialNumber: string,
+  clientId?: string,
+  clientSecret?: string
+): Promise<WarrantyInfo> {
+  // Check if both clientId and clientSecret are provided
+  if (clientId && clientSecret) {
+    try {
+      console.log(`Looking up Dell warranty for ${serialNumber} using API`);
+      return await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
+    } catch (error) {
+      console.error('Error using Dell API:', error);
+      console.log('Falling back to mock implementation...');
+    }
+  } else {
+    console.log('clientId / clientSecret is not provided, falling back to mock implementation');
+  }
+  
+  return getMockDellWarrantyInfo(serialNumber);
 } 

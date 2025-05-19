@@ -341,7 +341,7 @@ export default function ConfigForm() {
                               />
                             </FormControl>
                             <FormDescription>
-                              Your N-central User-API Token (JWT) generated from the N-central UI
+                              Your N-central User-API Token (JWT) generated from the N-central UI. Click <a href="https://developer.n-able.com/n-central/docs/create-an-api-only-user" target="_blank" rel="noopener noreferrer">here</a> for more information.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

@@ -13,6 +13,7 @@ export interface Device {
   hostname?: string;
   clientId?: string;
   clientName?: string;
+  deviceClass?: string;
   
   // Fields for devices that already have warranty info
   hasWarrantyInfo?: boolean;

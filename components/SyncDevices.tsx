@@ -143,6 +143,20 @@ export default function SyncDevices() {
                 skipped: true
               };
             }
+
+            // Skip if device has no serial number
+            if (!device.serialNumber) {
+              console.log(`Skipping ${device.id} - no serial number`);
+              return {
+                serialNumber: device.serialNumber,
+                manufacturer: device.manufacturer,
+                startDate: device.warrantyStartDate || '',
+                endDate: device.warrantyEndDate || '',
+                status: 'unknown',
+                productDescription: device.model,
+                skipped: true
+              };
+            }
             
             const response = await fetch('/api/warranty', {
               method: 'POST',

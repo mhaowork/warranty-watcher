@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Platform } from '../../../../types/platform';
 import { WarrantyInfo } from '../../../../types/warranty';
 import { updateDattoWarranty } from '../../../../lib/platforms/datto';
+import { updateNCentralWarranty } from '../../../../lib/platforms/ncentral';
 
 // Define typed credentials for each platform
 type DattoCredentials = {
@@ -75,12 +76,13 @@ export async function POST(request: Request) {
       }
       
       case Platform.NCENTRAL: {
-        // This would be where we implement N-central update
         console.log(`Updating device ${deviceId} in N-central with warranty info:`, warrantyInfo);
-        
-        // Simulate API delay for now
-        await new Promise(resolve => setTimeout(resolve, 500));
-        updateSuccess = true; // Simulated success for N-central
+        const ncentralCreds = credentials as NCentralCredentials;
+        updateSuccess = await updateNCentralWarranty(
+          deviceId,
+          warrantyInfo.endDate,
+          ncentralCreds
+        );
         break;
       }
       

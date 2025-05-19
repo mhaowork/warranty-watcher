@@ -12,6 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { AlertCircle } from 'lucide-react';
 
 // Manufacturer credentials schema
 const manufacturerSchema = z.object({
@@ -147,6 +148,12 @@ export default function ConfigForm() {
         <CardDescription>
           Configure your manufacturer and platform credentials
         </CardDescription>
+        <div className="flex p-3 mt-2 border rounded-md bg-amber-50 border-amber-200">
+          <AlertCircle className="h-5 w-5 mr-2 text-amber-500" />
+          <p className="text-sm font-medium text-amber-700">
+            Note: These credentials are stored in your local browser only. If you change browsers or devices, you&apos;ll need to reconfigure.
+          </p>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="manufacturer" onValueChange={(value) => setActiveTab(value as 'manufacturer' | 'platform')}>

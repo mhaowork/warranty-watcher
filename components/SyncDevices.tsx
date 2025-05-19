@@ -181,7 +181,10 @@ export default function SyncDevices() {
                   writtenBack = true;
                   console.log(`Successfully updated warranty for ${device.serialNumber} in ${selectedPlatform}`);
                 } else {
-                  console.error(`Failed to update warranty for ${device.serialNumber} in ${selectedPlatform}`);
+                  const errorData = await updateResponse.json();
+                  console.error(`Failed to update warranty for ${device.serialNumber} in ${selectedPlatform}: ${errorData.error || 'Unknown error'}`);
+                  // Set alert to show the error
+                  alert(`Failed to update warranty for ${device.serialNumber} in ${selectedPlatform}: ${errorData.error || 'Unknown error'}`);
                 }
               } catch (updateError) {
                 console.error('Error writing back warranty info:', updateError);

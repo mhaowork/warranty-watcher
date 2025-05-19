@@ -19,6 +19,9 @@ const manufacturerSchema = z.object({
     clientId: z.string().min(1, 'Client ID is required'),
     clientSecret: z.string().min(1, 'Client Secret is required'),
   }),
+  [Manufacturer.HP]: z.object({
+    apiKey: z.string().optional(),
+  }),
 });
 
 // Platform credentials schema
@@ -68,6 +71,7 @@ export default function ConfigForm() {
     resolver: zodResolver(manufacturerSchema),
     defaultValues: {
       [Manufacturer.DELL]: { clientId: '', clientSecret: '' },
+      [Manufacturer.HP]: { apiKey: '' },
     },
   });
   
@@ -92,6 +96,9 @@ export default function ConfigForm() {
         [Manufacturer.DELL]: {
           clientId: manufacturerCreds[Manufacturer.DELL]?.clientId || '',
           clientSecret: manufacturerCreds[Manufacturer.DELL]?.clientSecret || '',
+        },
+        [Manufacturer.HP]: {
+          apiKey: manufacturerCreds[Manufacturer.HP]?.apiKey || '',
         }
       };
       manufacturerForm.reset(mergedManufacturerCreds);
@@ -188,6 +195,32 @@ export default function ConfigForm() {
                             </FormControl>
                             <FormDescription>
                               Your Dell client secret
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">HP</h3>
+                    <div className="space-y-4">
+                      <FormField
+                        control={manufacturerForm.control}
+                        name={`${Manufacturer.HP}.apiKey`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>API Key</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password" 
+                                placeholder="Enter HP API Key" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Your API Key for api.warrantywatcher.com
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

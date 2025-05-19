@@ -1,16 +1,21 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
 import { inferWarrantyStatus } from '../utils/warrantyUtils';
+import axios from 'axios';
 
-export async function getHpWarrantyInfo(
-  serialNumber: string,
-  apiKey?: string
-): Promise<WarrantyInfo> {
+interface HpWarrantyResponse {
+  start_date: string;
+  end_date: string;
+  status: string;
+  serial_number: string;
+  product_name: string;
+  warranty_type: string;
+}
+
+// Mock HP data for demos
+async function getMockHpWarrantyInfo(serialNumber: string): Promise<WarrantyInfo> {
   try {
-    // In a real implementation, this would call the HP API
-    // For now, we'll simulate a response
-    
-    console.log(`Looking up HP warranty for ${serialNumber}${apiKey ? ` with API key ${apiKey}` : ''}`);
+    console.log(`Looking up HP warranty for ${serialNumber} (mock implementation)`);
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -34,7 +39,7 @@ export async function getHpWarrantyInfo(
       startDate: startDateStr,
       endDate: endDateStr,
       status,
-      productDescription: 'HP EliteBook 840 G8',
+      productDescription: 'HP EliteBook 840 G8 (mock data)',
       coverageDetails: [
         'Hardware Support',
         'Accidental Damage Protection',
@@ -51,4 +56,84 @@ export async function getHpWarrantyInfo(
       status: 'unknown',
     };
   }
+}
+
+// Map HP API status to our WarrantyInfo status
+function mapHpStatus(status: string): 'active' | 'expired' | 'unknown' {
+  const lowerStatus = status.toLowerCase();
+  if (lowerStatus.includes('active') || lowerStatus === 'valid') {
+    return 'active';
+  } else if (lowerStatus.includes('expired') || lowerStatus === 'invalid') {
+    return 'expired';
+  } else {
+    return 'unknown';
+  }
+}
+
+async function fetchHpWarrantyData(
+  serialNumber: string,
+  apiKey: string
+): Promise<WarrantyInfo> {
+  try {
+    // Call HP warranty API
+    const response = await axios.get<HpWarrantyResponse>(
+      `https://api.warrantywatcher.com/warranty/hp/${serialNumber}`,
+      {
+        headers: {
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    const data = response.data;
+    
+    // Validate response
+    if (!data || !data.end_date) {
+      throw new Error(`Invalid or empty response from HP API for ${serialNumber}`);
+    }
+    
+    // Map the status from API to our warranty status format
+    // If can't map correctly, use our inferWarrantyStatus function
+    let status: 'active' | 'expired' | 'unknown';
+    if (data.status) {
+      status = mapHpStatus(data.status);
+    } else {
+      status = inferWarrantyStatus(data.end_date);
+    }
+    
+    return {
+      serialNumber,
+      manufacturer: Manufacturer.HP,
+      startDate: data.start_date,
+      endDate: data.end_date,
+      status,
+      productDescription: data.product_name || 'HP Product',
+      coverageDetails: data.warranty_type ? [data.warranty_type] : []
+    };
+  } catch (error) {
+    console.error('Error fetching HP warranty data:', error);
+    throw error;
+  }
+}
+
+export async function getHpWarrantyInfo(
+  serialNumber: string,
+  apiKey?: string
+): Promise<WarrantyInfo> {
+  // Check if apiKey is provided
+  if (apiKey) {
+    try {
+      const warranty = await fetchHpWarrantyData(serialNumber, apiKey);
+      console.log(`Found HP warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+      return warranty;
+    } catch (error) {
+      console.error('Error using HP API:', error);
+      throw error;
+    }
+  } else {
+    console.log('API key is not provided, falling back to mock implementation');
+  }
+  
+  return getMockHpWarrantyInfo(serialNumber);
 } 

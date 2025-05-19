@@ -145,7 +145,7 @@ async function fetchDellWarrantyData(
     const productDescription = deviceInfo.systemDescription || 
                               deviceInfo.productLineDescription || 
                               'Dell Product';
-    
+
     return {
       serialNumber,
       manufacturer: Manufacturer.DELL,
@@ -214,8 +214,9 @@ export async function getDellWarrantyInfo(
   // Check if both clientId and clientSecret are provided
   if (clientId && clientSecret) {
     try {
-      console.log(`Looking up Dell warranty for ${serialNumber} using API`);
-      return await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
+      const warranty = await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
+      console.log(`Found Dell warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+      return warranty;
     } catch (error) {
       console.error('Error using Dell API:', error);
       console.log('Falling back to mock implementation...');

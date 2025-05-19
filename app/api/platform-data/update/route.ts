@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Platform } from '../../../../types/platform';
 import { WarrantyInfo } from '../../../../types/warranty';
+import { updateDattoWarranty } from '../../../../lib/platforms/datto';
 
 // Define typed credentials for each platform
 type DattoCredentials = {
@@ -58,12 +59,45 @@ export async function POST(request: Request) {
       }
     }
     
-    // This would be where we would update the device in the source system
-    // For this demo implementation, we'll just simulate a successful update
-    console.log(`Updating device ${deviceId} in ${platform} with warranty info:`, warrantyInfo);
+    // Update the device in the source system based on platform
+    let updateSuccess = false;
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    switch (platform) {
+      case Platform.DATTO_RMM: {
+        console.log(`Updating device ${deviceId} in Datto RMM with warranty info:`, warrantyInfo);
+        const dattoCreds = credentials as DattoCredentials;
+        updateSuccess = await updateDattoWarranty(
+          deviceId,
+          warrantyInfo.endDate,
+          dattoCreds
+        );
+        break;
+      }
+      
+      case Platform.NCENTRAL: {
+        // This would be where we implement N-central update
+        console.log(`Updating device ${deviceId} in N-central with warranty info:`, warrantyInfo);
+        
+        // Simulate API delay for now
+        await new Promise(resolve => setTimeout(resolve, 500));
+        updateSuccess = true; // Simulated success for N-central
+        break;
+      }
+      
+      default: {
+        return NextResponse.json(
+          { error: `Platform ${platform} is not supported for updates` },
+          { status: 400 }
+        );
+      }
+    }
+    
+    if (!updateSuccess) {
+      return NextResponse.json(
+        { error: `Failed to update warranty information in ${platform}` },
+        { status: 500 }
+      );
+    }
     
     // Return success response
     return NextResponse.json({ 

@@ -16,11 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 // Manufacturer credentials schema
 const manufacturerSchema = z.object({
   [Manufacturer.DELL]: z.object({
-    apiKey: z.string().min(1, 'API Key is required'),
-    clientId: z.string().optional(),
-  }),
-  [Manufacturer.HP]: z.object({
-    apiKey: z.string().optional(),
+    clientId: z.string().min(1, 'Client ID is required'),
+    clientSecret: z.string().min(1, 'Client Secret is required'),
   }),
 });
 
@@ -70,8 +67,7 @@ export default function ConfigForm() {
   const manufacturerForm = useForm<z.infer<typeof manufacturerSchema>>({
     resolver: zodResolver(manufacturerSchema),
     defaultValues: {
-      [Manufacturer.DELL]: { apiKey: '', clientId: '' },
-      [Manufacturer.HP]: { apiKey: '' },
+      [Manufacturer.DELL]: { clientId: '', clientSecret: '' },
     },
   });
   
@@ -89,7 +85,16 @@ export default function ConfigForm() {
   useEffect(() => {
     const manufacturerCreds = getManufacturerCredentials();
     if (Object.keys(manufacturerCreds).length > 0) {
-      manufacturerForm.reset(manufacturerCreds);
+      // Ensure all manufacturer fields are defined with the new structure
+      const mergedManufacturerCreds = {
+        ...manufacturerForm.getValues(),
+        ...manufacturerCreds,
+        [Manufacturer.DELL]: {
+          clientId: manufacturerCreds[Manufacturer.DELL]?.clientId || '',
+          clientSecret: manufacturerCreds[Manufacturer.DELL]?.clientSecret || '',
+        }
+      };
+      manufacturerForm.reset(mergedManufacturerCreds);
     }
     
     const platformCreds = getPlatformCredentials();
@@ -153,15 +158,15 @@ export default function ConfigForm() {
                     <div className="space-y-4">
                       <FormField
                         control={manufacturerForm.control}
-                        name={`${Manufacturer.DELL}.apiKey`}
+                        name={`${Manufacturer.DELL}.clientId`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>API Key</FormLabel>
+                            <FormLabel>Client ID</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter Dell API key" {...field} />
+                              <Input placeholder="Enter Dell client ID" {...field} />
                             </FormControl>
                             <FormDescription>
-                              Your Dell API key for warranty lookups
+                              Your Dell client ID
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -170,37 +175,19 @@ export default function ConfigForm() {
                       
                       <FormField
                         control={manufacturerForm.control}
-                        name={`${Manufacturer.DELL}.clientId`}
+                        name={`${Manufacturer.DELL}.clientSecret`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Client ID (Optional)</FormLabel>
+                            <FormLabel>Client Secret</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter Dell client ID" {...field} />
+                              <Input 
+                                type="password" 
+                                placeholder="Enter Dell client secret" 
+                                {...field} 
+                              />
                             </FormControl>
                             <FormDescription>
-                              Your Dell client ID (if applicable)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">HP</h3>
-                    <div className="space-y-4">
-                      <FormField
-                        control={manufacturerForm.control}
-                        name={`${Manufacturer.HP}.apiKey`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>API Key (Optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter HP API key" {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              Your HP API key for warranty lookups (if needed)
+                              Your Dell client secret
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

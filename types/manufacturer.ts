@@ -6,8 +6,8 @@ export enum Manufacturer {
 
 export interface ManufacturerCredentials {
   [Manufacturer.DELL]: {
-    apiKey: string;
-    clientId?: string;
+    clientId: string;
+    clientSecret: string;
   };
   [Manufacturer.HP]: {
     apiKey?: string;

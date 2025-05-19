@@ -326,7 +326,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         console.log(`\nProcessing device: ${device.hostname} (ID: ${device.uid})`);
         
         // Log warranty date from device object
-        console.log(`Warranty date from API: ${device.warrantyDate || 'Not set'}`);
+        console.log(`Warranty date from Datto RMM: ${device.warrantyDate || 'Not set'}`);
         
         const audit = await getDeviceAudit(client, device.uid);
 

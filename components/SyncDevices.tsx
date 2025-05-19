@@ -150,7 +150,7 @@ export default function SyncDevices() {
               body: JSON.stringify({
                 serialNumber: device.serialNumber,
                 manufacturer: device.manufacturer,
-                credentials: manufacturerCreds[device.manufacturer]
+                credentials: manufacturerCreds[device.manufacturer as keyof typeof manufacturerCreds]
               })
             });
             
@@ -288,44 +288,6 @@ export default function SyncDevices() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="mb-6 space-y-4">
-          <div>
-            <h3 className="text-lg font-medium mb-2">Sync Options</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="writeBack" 
-                  checked={syncOptions.writeBackToSource}
-                  onCheckedChange={(checked) => {
-                    const isChecked = checked === true;
-                    handleSyncOptionChange('writeBackToSource', isChecked);
-                    // If write back is disabled, automatically set skipExistingWarrantyInfo to false
-                    if (!isChecked) {
-                      handleSyncOptionChange('skipExistingWarrantyInfo', false);
-                    }
-                  }}
-                />
-                <Label htmlFor="writeBack">
-                  Write warranty information back to source
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="skipExisting" 
-                  checked={syncOptions.skipExistingWarrantyInfo}
-                  disabled={!syncOptions.writeBackToSource}
-                  onCheckedChange={(checked) => 
-                    handleSyncOptionChange('skipExistingWarrantyInfo', checked === true)
-                  }
-                />
-                <Label htmlFor="skipExisting" className={!syncOptions.writeBackToSource ? "text-gray-400" : ""}>
-                  Skip devices with existing warranty information
-                </Label>
-              </div>
-            </div>
-          </div>
-        </div>
-        
         <Tabs defaultValue="platform">
           <TabsList className="mb-4">
             <TabsTrigger value="platform">Platform</TabsTrigger>
@@ -353,24 +315,46 @@ export default function SyncDevices() {
                   </SelectContent>
                 </Select>
                 
-                {/* Check for missing credentials and show demo mode notice */}
-                {(() => {
-                  const platformCreds = getPlatformCredentials();
-                  const hasPlatformCredentials = selectedPlatform === Platform.DATTO_RMM ? 
-                    (platformCreds[Platform.DATTO_RMM]?.url && platformCreds[Platform.DATTO_RMM]?.apiKey && platformCreds[Platform.DATTO_RMM]?.secretKey) :
-                  selectedPlatform === Platform.NCENTRAL ?
-                    (platformCreds[Platform.NCENTRAL]?.serverUrl && platformCreds[Platform.NCENTRAL]?.apiToken) :
-                  true;
-                  
-                  if (!hasPlatformCredentials) {
-                    return (
-                      <p className="mt-2 text-sm text-amber-600">
-                        No credentials configured for {selectedPlatform}. Running in demo mode with sample data.
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
+                {/* Use useEffect for client-side only code and useState to track credential state */}
+                <PlatformCredentialStatus platform={selectedPlatform} />
+              </div>
+              
+              <div className="mb-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Sync Options</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="writeBack" 
+                        checked={syncOptions.writeBackToSource}
+                        onCheckedChange={(checked) => {
+                          const isChecked = checked === true;
+                          handleSyncOptionChange('writeBackToSource', isChecked);
+                          // If write back is disabled, automatically set skipExistingWarrantyInfo to false
+                          if (!isChecked) {
+                            handleSyncOptionChange('skipExistingWarrantyInfo', false);
+                          }
+                        }}
+                      />
+                      <Label htmlFor="writeBack">
+                        Write warranty information back to source
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="skipExisting" 
+                        checked={syncOptions.skipExistingWarrantyInfo}
+                        disabled={!syncOptions.writeBackToSource}
+                        onCheckedChange={(checked) => 
+                          handleSyncOptionChange('skipExistingWarrantyInfo', checked === true)
+                        }
+                      />
+                      <Label htmlFor="skipExisting" className={!syncOptions.writeBackToSource ? "text-gray-400" : ""}>
+                        Skip devices with existing warranty information
+                      </Label>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <Button 
@@ -455,5 +439,42 @@ export default function SyncDevices() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Add this component outside the main component
+// Defer the platform credential check to the client side after the component has mounted
+// so that it won't cause a hydration error (server side code doesn't have access to the browser local storage API)
+function PlatformCredentialStatus({ platform }: { platform: Platform }) {
+  const [hasPlatformCredentials, setHasPlatformCredentials] = useState(true);
+  
+  useEffect(() => {
+    const platformCreds = getPlatformCredentials();
+    let hasCredentials = true;
+    
+    if (platform === Platform.DATTO_RMM) {
+      hasCredentials = Boolean(
+        platformCreds[Platform.DATTO_RMM]?.url && 
+        platformCreds[Platform.DATTO_RMM]?.apiKey && 
+        platformCreds[Platform.DATTO_RMM]?.secretKey
+      );
+    } else if (platform === Platform.NCENTRAL) {
+      hasCredentials = Boolean(
+        platformCreds[Platform.NCENTRAL]?.serverUrl && 
+        platformCreds[Platform.NCENTRAL]?.apiToken
+      );
+    }
+    
+    setHasPlatformCredentials(hasCredentials);
+  }, [platform]);
+  
+  if (hasPlatformCredentials) {
+    return null;
+  }
+  
+  return (
+    <p className="mt-2 text-sm text-amber-600">
+      No credentials configured for {platform}. Running in demo mode with sample data.
+    </p>
   );
 } 

@@ -188,7 +188,7 @@ async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyIn
       startDate: startDateStr,
       endDate: endDateStr,
       status,
-      productDescription: 'Dell Latitude 5420',
+      productDescription: 'Dell Latitude 5420 (mock data)',
       coverageDetails: [
         'Hardware Support',
         'Next Business Day Onsite Service'
@@ -219,7 +219,7 @@ export async function getDellWarrantyInfo(
       return warranty;
     } catch (error) {
       console.error('Error using Dell API:', error);
-      console.log('Falling back to mock implementation...');
+      throw error;
     }
   } else {
     console.log('clientId / clientSecret is not provided, falling back to mock implementation');

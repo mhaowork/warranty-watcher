@@ -1,6 +1,9 @@
 export enum Manufacturer {
   DELL = 'dell',
-  HP = 'hp'
+  HP = 'hp',
+  LENOVO = 'lenovo',
+  APPLE = 'apple',
+  MICROSOFT = 'microsoft',
   // Future manufacturers would be added here
 }
 

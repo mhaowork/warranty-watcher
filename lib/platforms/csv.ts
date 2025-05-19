@@ -29,37 +29,63 @@ export function parseCSVData(csvData: string): Device[] {
           case 'serial number':
           case 'serialnumber':
           case 'serial':
+          case 'service tag':
+          case 'servicetag':
+          case 'asset tag':
+          case 'assettag':
             device.serialNumber = value;
             break;
           case 'manufacturer':
           case 'vendor':
-            device.manufacturer = 
-              value.toLowerCase().includes('dell') ? Manufacturer.DELL :
-              value.toLowerCase().includes('hp') ? Manufacturer.HP :
-              Manufacturer.DELL; // Default to DELL if unknown
+          case 'make':
+            // Improved manufacturer detection with more variants
+            const lowerValue = value.toLowerCase();
+            if (lowerValue.includes('dell')) {
+              device.manufacturer = Manufacturer.DELL;
+            } else if (lowerValue.includes('hp') || lowerValue.includes('hewlett') || lowerValue.includes('packard')) {
+              device.manufacturer = Manufacturer.HP;
+            } else if (lowerValue.includes('lenovo') || lowerValue.includes('thinkpad')) {
+              device.manufacturer = Manufacturer.LENOVO;
+            } else if (lowerValue.includes('apple') || lowerValue.includes('mac')) {
+              device.manufacturer = Manufacturer.APPLE;
+            } else if (lowerValue.includes('microsoft') || lowerValue.includes('surface')) {
+              device.manufacturer = Manufacturer.MICROSOFT;
+            } else if (value) {
+              // If there's a value but not recognized, we'll default to DELL
+              // This can be changed based on business requirements
+              device.manufacturer = Manufacturer.DELL; 
+            }
             break;
           case 'model':
+          case 'device model':
+          case 'model number':
             device.model = value;
             break;
           case 'hostname':
           case 'computer name':
           case 'device name':
+          case 'name':
             device.hostname = value;
             break;
           case 'client id':
           case 'clientid':
+          case 'customer id':
+          case 'customerId':
             device.clientId = value;
             break;
           case 'client name':
           case 'clientname':
           case 'client':
+          case 'customer':
+          case 'customer name':
+          case 'customername':
             device.clientName = value;
             break;
         }
       }
     });
     
-    // Only add devices with a serial number
+    // Only add devices with a serial number and manufacturer
     if (device.serialNumber && device.manufacturer) {
       devices.push(device as Device);
     }

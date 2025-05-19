@@ -37,7 +37,7 @@ interface NCentralDeviceItem {
 const mockDevices = [
   {
     id: 'nc-1',
-    serialNumber: 'DELL00987654',
+    serialNumber: 'JH2RRW1',
     manufacturer: Manufacturer.DELL,
     model: 'OptiPlex 7070',
     hostname: 'NCENTRAL-DEV1',
@@ -55,7 +55,7 @@ const mockDevices = [
   },
   {
     id: 'nc-3',
-    serialNumber: 'DELL00135790',
+    serialNumber: 'CCKWN63',
     manufacturer: Manufacturer.DELL,
     model: 'Latitude 7400',
     hostname: 'NCENTRAL-DEV3',

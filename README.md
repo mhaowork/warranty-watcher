@@ -64,6 +64,9 @@ A demo with mock data:
 ## Usage
 
 1. Configure manufacturer API credentials (Dell, HP, etc.)
-2. Configure platform credentials (Datto RMM)
+   - For Dell API setup, see [Dell Warranty API Guide](docs/dell.md) to get your API key
+   - For HP API setup, see [HP Warranty API Guide](docs/hp.md) to get an API key
+
+2. Configure platform credentials (Datto RMM, N-Central etc)
 3. Sync devices from your platform or upload a CSV file. 
 4. View and export warranty information. You can choose to write the warranty info back to the source platform (RMM / PSA)

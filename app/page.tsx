@@ -33,6 +33,7 @@ export default function Home() {
             <h3 className="text-2xl font-semibold mb-4">Supported Platforms</h3>
             <div className="flex justify-center gap-6 mb-8">
               <div className="px-4 py-2 bg-gray-100 rounded-md">Datto RMM</div>
+              <div className="px-4 py-2 bg-gray-100 rounded-md">N-Central RMM</div>
               <div className="px-4 py-2 bg-gray-100 rounded-md">CSV Import</div>
             </div>
             

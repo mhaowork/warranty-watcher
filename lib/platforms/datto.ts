@@ -94,14 +94,14 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           id: 'dev-1',
           serialNumber: 'DELL00123456',
           manufacturer: Manufacturer.DELL,
-          model: 'Latitude 5420',
+          model: 'Latitude 5420 (mock data',
           hostname: 'DESKTOP-ABCDE1'
         },
         {
           id: 'dev-2',
           serialNumber: 'HP00789012',
           manufacturer: Manufacturer.HP,
-          model: 'EliteBook 840 G8',
+          model: 'EliteBook 840 G8 (mock data)',
           hostname: 'DESKTOP-FGHIJ2',
           // This device already has warranty info
           hasWarrantyInfo: true,
@@ -111,14 +111,14 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           id: 'dev-3',
           serialNumber: 'DELL00345678',
           manufacturer: Manufacturer.DELL,
-          model: 'OptiPlex 7080',
+          model: 'OptiPlex 7080 (mock data)',
           hostname: 'DESKTOP-KLMNO3'
         },
         {
           id: 'dev-4',
           serialNumber: 'HP00901234',
           manufacturer: Manufacturer.HP,
-          model: 'ProBook 450 G8',
+          model: 'ProBook 450 G8 (mock data)',
           hostname: 'DESKTOP-PQRST4',
           // This device already has warranty info (expired)
           hasWarrantyInfo: true,
@@ -128,35 +128,35 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           id: 'dev-5',
           serialNumber: 'DELL00567890',
           manufacturer: Manufacturer.DELL,
-          model: 'XPS 13',
+          model: 'XPS 13 (mock data)',
           hostname: 'LAPTOP-UVWXY5'
         },
         {
           id: 'dev-6',
           serialNumber: 'HP00123456',
           manufacturer: Manufacturer.HP,
-          model: 'EliteBook x360',
+          model: 'EliteBook x360 (mock data)',
           hostname: 'LAPTOP-ZABCD6'
         },
         {
           id: 'dev-7',
           serialNumber: 'DELL00789012',
           manufacturer: Manufacturer.DELL,
-          model: 'Precision 5550',
+          model: 'Precision 5550 (mock data)',
           hostname: 'WORKSTATION-EFGHI7'
         },
         {
           id: 'dev-8',
           serialNumber: 'HP00345678',
           manufacturer: Manufacturer.HP,
-          model: 'ZBook Studio G7',
+          model: 'ZBook Studio G7 (mock data)',
           hostname: 'WORKSTATION-JKLMN8'
         },
         {
           id: 'dev-9',
           serialNumber: 'DELL00901234',
           manufacturer: Manufacturer.DELL,
-          model: 'Latitude 7420',
+          model: 'Latitude 7420 (mock data)',
           hostname: 'LAPTOP-OPQRS9'
         },
         {

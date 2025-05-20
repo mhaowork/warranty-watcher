@@ -17,9 +17,21 @@ import { AlertCircle } from 'lucide-react';
 // Manufacturer credentials schema
 const manufacturerSchema = z.object({
   [Manufacturer.DELL]: z.object({
-    clientId: z.string().min(1, 'Client ID is required'),
-    clientSecret: z.string().min(1, 'Client Secret is required'),
-  }),
+    clientId: z.string(),
+    clientSecret: z.string(),
+  }).refine(
+    data => {
+      // If any field is filled, both fields are required
+      const hasClientId = data.clientId.trim() !== '';
+      const hasClientSecret = data.clientSecret.trim() !== '';
+      // Allow both empty or both filled
+      return (!hasClientId && !hasClientSecret) || (hasClientId && hasClientSecret);
+    },
+    {
+      message: "Both Client ID and Client Secret are required if either is provided",
+      path: [] // Shows error at the object level
+    }
+  ),
   [Manufacturer.HP]: z.object({
     apiKey: z.string().optional(),
   }),
@@ -175,12 +187,12 @@ export default function ConfigForm() {
                         name={`${Manufacturer.DELL}.clientId`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Client ID</FormLabel>
+                            <FormLabel>Client ID (Optional)</FormLabel>
                             <FormControl>
                               <Input placeholder="Enter Dell client ID" {...field} />
                             </FormControl>
                             <FormDescription>
-                              Your Dell client ID
+                              Your Dell client ID (optional)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -192,7 +204,7 @@ export default function ConfigForm() {
                         name={`${Manufacturer.DELL}.clientSecret`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Client Secret</FormLabel>
+                            <FormLabel>Client Secret (Optional)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
@@ -201,7 +213,7 @@ export default function ConfigForm() {
                               />
                             </FormControl>
                             <FormDescription>
-                              Your Dell client secret
+                              Your Dell client secret (optional)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -218,7 +230,7 @@ export default function ConfigForm() {
                         name={`${Manufacturer.HP}.apiKey`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>API Key</FormLabel>
+                            <FormLabel>API Key (Optional)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
@@ -227,7 +239,7 @@ export default function ConfigForm() {
                               />
                             </FormControl>
                             <FormDescription>
-                              Your API Key for api.warrantywatcher.com
+                              Your API Key for api.warrantywatcher.com (optional)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

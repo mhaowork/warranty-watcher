@@ -12,7 +12,7 @@ A demo with mock data:
 - **Manufacturer API Integration:** Query multiple manufacturer warranty APIs to determine warranty status
 - **Local Storage:** All configuration is stored in the browser's local storage for privacy
 - **CSV Import:** Import device information via CSV file
-- **Reporting:** Generate and export warranty status reports
+- **Reporting:** 🚧 Generate and export warranty status reports🚧 (Work-in-progress)
 
 ## Supported Platforms
 
@@ -20,16 +20,16 @@ A demo with mock data:
   - ⏳ None yet (future support planned)
 
 - **RMM Platforms**
-  - 🚧 Datto RMM (work in progress)
-  - 🚧 N-able N-central (work in progress)
+  - ✅ Datto RMM
+  - ✅ N-able N-central
 
 - **Other**
-  - 🚧 CSV Files (for standalone reporting)
+  - ✅ CSV Files (for standalone reporting)
 
 ## Supported Manufacturers
 
-- 🚧 Dell (work in progress)
-- 🚧 HP (work in progress)
+- ✅ Dell (work in progress)
+- ✅ HP (work in progress)
 - ⏳ Lenovo (planned)
 - ⏳ Microsoft (planned)
 - ⏳ Apple (planned)

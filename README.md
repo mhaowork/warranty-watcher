@@ -4,8 +4,7 @@
 
 A warranty information management system that bridges the gap between IT management platforms and manufacturer warranty databases. This system democratizes warranty lookups, making it accessible and transparent for IT professionals and managed service providers (MSPs).
 
-A demo with mock data:
-![Demo Screenshot](public/demo.png)
+Demo: https://demo.warrantywatcher.com/
 
 
 ## Features

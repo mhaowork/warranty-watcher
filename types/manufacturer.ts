@@ -15,4 +15,7 @@ export interface ManufacturerCredentials {
   [Manufacturer.HP]?: {
     apiKey?: string;
   };
+  [Manufacturer.LENOVO]?: {
+    apiKey?: string;
+  };
 } 

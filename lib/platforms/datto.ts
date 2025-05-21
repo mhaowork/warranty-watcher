@@ -126,16 +126,16 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
         },
         {
           id: 'dev-5',
-          serialNumber: 'DELL00567890',
-          manufacturer: Manufacturer.DELL,
-          model: 'XPS 13 (mock data)',
+          serialNumber: 'LR0394B2',
+          manufacturer: Manufacturer.LENOVO,
+          model: 'ThinkPad X1 Carbon (mock data)',
           hostname: 'LAPTOP-UVWXY5'
         },
         {
           id: 'dev-6',
-          serialNumber: 'HP00123456',
-          manufacturer: Manufacturer.HP,
-          model: 'EliteBook x360 (mock data)',
+          serialNumber: 'R9NOY12',
+          manufacturer: Manufacturer.LENOVO,
+          model: 'ThinkPad P1 (mock data)',
           hostname: 'LAPTOP-ZABCD6'
         },
         {
@@ -154,16 +154,16 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
         },
         {
           id: 'dev-9',
-          serialNumber: 'DELL00901234',
-          manufacturer: Manufacturer.DELL,
-          model: 'Latitude 7420 (mock data)',
+          serialNumber: 'MP1DU39T',
+          manufacturer: Manufacturer.LENOVO,
+          model: 'ThinkPad T14 (mock data)',
           hostname: 'LAPTOP-OPQRS9'
         },
         {
           id: 'dev-10',
-          serialNumber: 'HP00567890',
-          manufacturer: Manufacturer.HP,
-          model: 'EliteDesk 800 G6',
+          serialNumber: 'PF2BXTWK',
+          manufacturer: Manufacturer.LENOVO,
+          model: 'ThinkCentre M70q',
           hostname: 'DESKTOP-TUVWX10',
           // This device has a warranty set to 2026
           hasWarrantyInfo: true,

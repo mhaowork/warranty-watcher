@@ -35,6 +35,9 @@ const manufacturerSchema = z.object({
   [Manufacturer.HP]: z.object({
     apiKey: z.string().optional(),
   }),
+  [Manufacturer.LENOVO]: z.object({
+    apiKey: z.string().optional(),
+  }),
 });
 
 // Platform credentials schema
@@ -85,6 +88,7 @@ export default function ConfigForm() {
     defaultValues: {
       [Manufacturer.DELL]: { clientId: '', clientSecret: '' },
       [Manufacturer.HP]: { apiKey: '' },
+      [Manufacturer.LENOVO]: { apiKey: '' },
     },
   });
   
@@ -112,6 +116,9 @@ export default function ConfigForm() {
         },
         [Manufacturer.HP]: {
           apiKey: manufacturerCreds[Manufacturer.HP]?.apiKey || '',
+        },
+        [Manufacturer.LENOVO]: {
+          apiKey: manufacturerCreds[Manufacturer.LENOVO]?.apiKey || manufacturerCreds[Manufacturer.HP]?.apiKey || '',
         }
       };
       manufacturerForm.reset(mergedManufacturerCreds);
@@ -141,6 +148,11 @@ export default function ConfigForm() {
   
   // Handler for manufacturer form submission
   function onManufacturerSubmit(values: z.infer<typeof manufacturerSchema>) {
+    // Ensure HP and Lenovo have the same API key
+    const apiKey = values[Manufacturer.HP].apiKey || values[Manufacturer.LENOVO].apiKey || '';
+    values[Manufacturer.HP].apiKey = apiKey;
+    values[Manufacturer.LENOVO].apiKey = apiKey;
+    
     console.log('Saving manufacturer credentials:', values);
     saveManufacturerCredentials(values);
     alert('Manufacturer credentials saved successfully!');
@@ -223,23 +235,31 @@ export default function ConfigForm() {
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">HP</h3>
+                    <h3 className="text-lg font-medium">HP & Lenovo</h3>
                     <div className="space-y-4">
                       <FormField
                         control={manufacturerForm.control}
                         name={`${Manufacturer.HP}.apiKey`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>API Key (Optional)</FormLabel>
+                            <FormLabel>API Key</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
-                                placeholder="Enter HP API Key" 
+                                placeholder="Enter HP/Lenovo API Key" 
                                 {...field} 
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  // Sync with Lenovo field
+                                  const newValue = e.target.value;
+                                  const lenovoField = manufacturerForm.getValues();
+                                  lenovoField[Manufacturer.LENOVO].apiKey = newValue;
+                                  manufacturerForm.reset(lenovoField);
+                                }}
                               />
                             </FormControl>
                             <FormDescription>
-                              Your API Key for api.warrantywatcher.com (optional)
+                              Your API Key for api.warrantywatcher.com (used for both HP and Lenovo)
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

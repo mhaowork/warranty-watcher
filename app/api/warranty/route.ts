@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Manufacturer } from '../../../types/manufacturer';
 import { getDellWarrantyInfo } from '../../../lib/manufacturers/dell';
 import { getHpWarrantyInfo } from '../../../lib/manufacturers/hp';
+import { getLenovoWarrantyInfo } from '../../../lib/manufacturers/lenovo';
 
 export async function POST(request: Request) {
   try {
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
       case Manufacturer.HP:
         return NextResponse.json(
           await getHpWarrantyInfo(serialNumber, credentials?.apiKey)
+        );
+      case Manufacturer.LENOVO:
+        return NextResponse.json(
+          await getLenovoWarrantyInfo(serialNumber, credentials?.apiKey)
         );
       default:
         return NextResponse.json(

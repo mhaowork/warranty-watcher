@@ -29,9 +29,9 @@ Demo: https://demo.warrantywatcher.com/
 
 ## Supported Manufacturers
 
-- ✅ Dell (work in progress)
-- ✅ HP (work in progress)
-- ⏳ Lenovo (planned)
+- ✅ Dell
+- ✅ HP
+- ✅ Lenovo
 - ⏳ Microsoft (planned)
 - ⏳ Apple (planned)
 
@@ -66,7 +66,7 @@ Demo: https://demo.warrantywatcher.com/
 
 1. Configure manufacturer API credentials (Dell, HP, etc.)
    - For Dell API setup, see [Dell Warranty API Guide](docs/dell.md) to get your API key
-   - For HP API setup, see [HP Warranty API Guide](docs/hp.md) to get an API key
+   - For HP & Lenovo API setup, see [this API Guide](docs/hp-lenovo.md) to get an API key
 
 2. Configure platform credentials (Datto RMM, N-Central etc)
    - Datto RMM: See the [official guide](https://rmm.datto.com/help/en/Content/2SETUP/APIv2.htm) to activate the API and get your key

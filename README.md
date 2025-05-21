@@ -70,6 +70,9 @@ A demo with mock data:
    - For HP API setup, see [HP Warranty API Guide](docs/hp.md) to get an API key
 
 2. Configure platform credentials (Datto RMM, N-Central etc)
+   - Datto RMM: See the [official guide](https://rmm.datto.com/help/en/Content/2SETUP/APIv2.htm) to activate the API and get your key
+   - N-central RMM: Follow [this doc](https://developer.n-able.com/n-central/docs/create-an-api-only-user) to create an API-only user and get your JSON Web Token aka API key.
+
 3. Sync devices from your platform or upload a CSV file. 
 4. View and export warranty information. You can choose to write the warranty info back to the source platform (RMM / PSA)
 

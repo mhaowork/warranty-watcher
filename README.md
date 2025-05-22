@@ -41,8 +41,11 @@ Demo: https://demo.warrantywatcher.com/
 ### Prerequisites
 
 - Node.js 18.0.0 or later
+- Docker (optional, for containerized deployment)
 
 ### Installation
+
+#### Local Development
 
 1. Clone the repository
    ```
@@ -61,6 +64,30 @@ Demo: https://demo.warrantywatcher.com/
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+#### Docker Development
+
+1. Clone the repository
+   ```
+   git clone https://github.com/yourusername/warranty-watcher.git
+   cd warranty-watcher
+   ```
+
+2. Start the development container
+   ```
+   docker-compose up dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+#### Docker Production Deployment
+
+1. Build and start the production container
+   ```
+   docker-compose up -d prod
+   ```
+
+2. Access the application at [http://localhost:3000](http://localhost:3000)
 
 ## Usage
 

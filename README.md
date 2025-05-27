@@ -45,11 +45,29 @@ Demo: https://demo.warrantywatcher.com/
 
 ### Installation
 
-#### Local Development
+
+#### Deployment
+1. Run with Docker directly
+   ```
+   docker run -p 3000:3000 mhaowork/warrantywatcher:latest
+   ```
+
+   Tip: swap `-p` with `-d -p` to run it in the background
+
+2. Access the application at [http://localhost:3000](http://localhost:3000). That's it!
+
+3. Alternatively, if you want to build from source:
+   ```
+   git clone https://github.com/mhaowork/warranty-watcher.git
+   cd warranty-watcher
+   docker-compose up -d
+   ```
+
+#### Local Development (Ignore this unless you want to change the code Or don't want to use Docker)
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/warranty-watcher.git
+   git clone https://github.com/mhaowork/warranty-watcher.git
    cd warranty-watcher
    ```
 
@@ -64,30 +82,6 @@ Demo: https://demo.warrantywatcher.com/
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-#### Docker Development
-
-1. Clone the repository
-   ```
-   git clone https://github.com/yourusername/warranty-watcher.git
-   cd warranty-watcher
-   ```
-
-2. Start the development container
-   ```
-   docker-compose up dev
-   ```
-
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-#### Docker Production Deployment
-
-1. Build and start the production container
-   ```
-   docker-compose up -d prod
-   ```
-
-2. Access the application at [http://localhost:3000](http://localhost:3000)
 
 ## Usage
 

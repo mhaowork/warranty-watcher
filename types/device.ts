@@ -7,6 +7,7 @@ export interface NetworkInterface {
 }
 
 export interface Device {
+  id?: string; // Primary key for database
   serialNumber: string;
   manufacturer: Manufacturer;
   model?: string;
@@ -14,14 +15,21 @@ export interface Device {
   clientId?: string;
   clientName?: string;
   deviceClass?: string;
+  sourcePlatform?: string; // Which platform this device came from
+  sourceDeviceId?: string; // ID in the source platform
   
-  // Fields for devices that already have warranty info
-  hasWarrantyInfo?: boolean;
+  // Warranty information (integrated into device record)
   warrantyStartDate?: string; // YYYY-MM-DD
   warrantyEndDate?: string; // YYYY-MM-DD
-  id?: string; // For source system identification
+  warrantyStatus?: 'active' | 'expired' | 'unknown';
+  warrantyFetchedAt?: string; // ISO datetime when warranty was last fetched
+  warrantyWrittenBackAt?: string; // ISO datetime when warranty was written back to source
+  
+  // Computed fields (not stored in DB, calculated at runtime)
+  hasWarrantyInfo?: boolean;
+  needsWarrantyLookup?: boolean;
 
-  // System information
+  // System information (optional, from RMM platforms)
   totalMemory?: number;
   totalCpuCores?: number;
   networkInterfaces?: NetworkInterface[];

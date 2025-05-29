@@ -79,7 +79,7 @@ export default function SyncDevices() {
       // 1. Get credentials from local storage
       const platformCreds = getPlatformCredentials();
       
-      // 2. Fetch devices from selected platform
+      // 2. Fetch devices from selected platform using original API that stores in database
       const response = await fetch('/api/platform-data/devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -158,13 +158,14 @@ export default function SyncDevices() {
               };
             }
             
+            // Use enhanced warranty API that checks database cache first
             const response = await fetch('/api/warranty', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 serialNumber: device.serialNumber,
                 manufacturer: device.manufacturer,
-                credentials: manufacturerCreds[device.manufacturer as keyof typeof manufacturerCreds]
+                credentials: manufacturerCreds[device.manufacturer as keyof typeof manufacturerCreds],
               })
             });
             
@@ -180,6 +181,7 @@ export default function SyncDevices() {
               console.log(`Writing back warranty info for ${device.serialNumber} to ${selectedPlatform}`);
               
               try {
+                // Use original platform update API that marks warranty as written back in database
                 const updateResponse = await fetch('/api/platform-data/update', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -336,7 +338,7 @@ export default function SyncDevices() {
               <div className="mb-6 space-y-4">
                 <div>
                   <h3 className="text-lg font-medium mb-2">Sync Options</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <div className="flex items-center space-x-2">
                       <Checkbox 
                         id="writeBack" 

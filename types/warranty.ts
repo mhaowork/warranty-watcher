@@ -13,4 +13,5 @@ export interface WarrantyInfo {
   writtenBack?: boolean;    // Whether this info was written back to the source
   skipped?: boolean;        // Whether this device was skipped due to existing info
   error?: boolean;          // Whether there was an error processing this device
+  fromCache?: boolean;      // Whether this info was retrieved from local database cache
 } 

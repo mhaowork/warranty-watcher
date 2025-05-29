@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Platform } from '../../../../types/platform';
 import { fetchDattoDevices } from '../../../../lib/platforms/datto';
 import { fetchNCentralDevices } from '../../../../lib/platforms/ncentral';
+import { storeDevicesFromPlatform } from '../../../../lib/services/warrantySync';
 
 export async function POST(request: Request) {
   try {
@@ -10,16 +11,16 @@ export async function POST(request: Request) {
     // Ensure we have at least an empty credentials object
     const safeCredentials = credentials || {};
     
+    let devices;
+    
     switch (platform) {
       case Platform.DATTO_RMM:
-        // No need to validate credentials anymore - demo mode will be used automatically when incomplete
-        const dattoDevices = await fetchDattoDevices(safeCredentials);
-        return NextResponse.json(dattoDevices);
+        devices = await fetchDattoDevices(safeCredentials);
+        break;
         
       case Platform.NCENTRAL:
-        // No need to validate credentials anymore - demo mode will be used automatically when incomplete
-        const ncentralDevices = await fetchNCentralDevices(safeCredentials);
-        return NextResponse.json(ncentralDevices);
+        devices = await fetchNCentralDevices(safeCredentials);
+        break;
         
       case Platform.CSV:
         // CSV upload would be handled differently through a form upload
@@ -34,8 +35,16 @@ export async function POST(request: Request) {
           { status: 400 }
         );
     }
+    
+    // Store devices in database for caching and tracking
+    if (devices && devices.length > 0) {
+      await storeDevicesFromPlatform(devices, platform);
+      console.log(`Stored ${devices.length} devices from ${platform} in database`);
+    }
+    
+    return NextResponse.json(devices);
   } catch (error) {
-    console.error('Error fetching devices:', error);
+    console.error('Error fetching and storing devices:', error);
     return NextResponse.json(
       { error: 'Failed to fetch devices' },
       { status: 500 }

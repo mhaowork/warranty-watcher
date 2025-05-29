@@ -94,7 +94,7 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           id: 'dev-1',
           serialNumber: 'DELL00123456',
           manufacturer: Manufacturer.DELL,
-          model: 'Latitude 5420 (mock data',
+          model: 'Latitude 5420 (mock data)',
           hostname: 'DESKTOP-ABCDE1'
         },
         {

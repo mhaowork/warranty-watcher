@@ -2,7 +2,7 @@
 
 import { WarrantyInfo } from '../types/warranty';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { CheckCircle, XCircle, MinusCircle, Database, Globe, FileText, Server } from 'lucide-react';
+import { CheckCircle, XCircle, MinusCircle, FileText, Server } from 'lucide-react';
 
 interface WarrantyResultsProps {
   data: WarrantyInfo[];
@@ -49,7 +49,6 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
           <TableHead>End Date</TableHead>
           <TableHead>Product</TableHead>
           <TableHead>Source</TableHead>
-          <TableHead>Cache Status</TableHead>
           <TableHead>Last Updated</TableHead>
           <TableHead>Write Back</TableHead>
         </TableRow>
@@ -77,21 +76,6 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
               <div className="flex items-center">
                 {getSourceIcon(item.deviceSource)}
                 <span className="text-xs">{item.deviceSource || 'Unknown'}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center">
-                {item.fromCache ? (
-                  <>
-                    <Database className="h-4 w-4 text-blue-500 mr-1" />
-                    <span className="text-xs text-blue-600">Cached</span>
-                  </>
-                ) : (
-                  <>
-                    <Globe className="h-4 w-4 text-green-500 mr-1" />
-                    <span className="text-xs text-green-600">Fresh</span>
-                  </>
-                )}
               </div>
             </TableCell>
             <TableCell className="text-xs text-gray-600">

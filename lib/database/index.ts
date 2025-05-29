@@ -46,7 +46,6 @@ function initializeDatabase(): Promise<sqlite3.Database> {
           
           warranty_start_date DATE,
           warranty_end_date DATE,
-          warranty_status TEXT CHECK(warranty_status IN ('active', 'expired', 'unknown')),
           warranty_fetched_at DATETIME,
           warranty_written_back_at DATETIME,
           
@@ -58,7 +57,6 @@ function initializeDatabase(): Promise<sqlite3.Database> {
       const createIndexesSQL = [
         'CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number);',
         'CREATE INDEX IF NOT EXISTS idx_devices_platform ON devices(source_platform);',
-        'CREATE INDEX IF NOT EXISTS idx_devices_warranty_status ON devices(warranty_status);',
         'CREATE INDEX IF NOT EXISTS idx_devices_warranty_fetched ON devices(warranty_fetched_at);'
       ];
 
@@ -103,7 +101,6 @@ interface DeviceRow {
   source_device_id: string | null;
   warranty_start_date: string | null;
   warranty_end_date: string | null;
-  warranty_status: 'active' | 'expired' | 'unknown' | null;
   warranty_fetched_at: string | null;
   warranty_written_back_at: string | null;
   created_at: string;
@@ -125,7 +122,6 @@ function mapRowToDevice(row: DeviceRow): Device {
     sourceDeviceId: row.source_device_id || undefined,
     warrantyStartDate: row.warranty_start_date || undefined,
     warrantyEndDate: row.warranty_end_date || undefined,
-    warrantyStatus: row.warranty_status || undefined,
     warrantyFetchedAt: row.warranty_fetched_at || undefined,
     warrantyWrittenBackAt: row.warranty_written_back_at || undefined,
     hasWarrantyInfo: !!row.warranty_fetched_at,
@@ -173,9 +169,9 @@ export async function insertOrUpdateDevice(device: Device): Promise<void> {
     INSERT OR REPLACE INTO devices (
       id, serial_number, manufacturer, model, hostname, 
       client_id, client_name, device_class, source_platform, source_device_id,
-      warranty_start_date, warranty_end_date, warranty_status, 
+      warranty_start_date, warranty_end_date, 
       warranty_fetched_at, warranty_written_back_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `;
   
   const params = [
@@ -191,7 +187,6 @@ export async function insertOrUpdateDevice(device: Device): Promise<void> {
     device.sourceDeviceId || null,
     device.warrantyStartDate || null,
     device.warrantyEndDate || null,
-    device.warrantyStatus || null,
     device.warrantyFetchedAt || null,
     device.warrantyWrittenBackAt || null
   ];
@@ -242,19 +237,17 @@ export async function getDevicesNeedingWarrantyLookup(
 export async function updateDeviceWarranty(serialNumber: string, warranty: {
   startDate: string;
   endDate: string;
-  status: 'active' | 'expired' | 'unknown';
 }): Promise<void> {
   const query = `
     UPDATE devices 
     SET warranty_start_date = ?, 
         warranty_end_date = ?, 
-        warranty_status = ?, 
         warranty_fetched_at = datetime('now'),
         updated_at = datetime('now')
     WHERE serial_number = ?
   `;
   
-  await runStatement(query, [warranty.startDate, warranty.endDate, warranty.status, serialNumber]);
+  await runStatement(query, [warranty.startDate, warranty.endDate, serialNumber]);
 }
 
 export async function markWarrantyWrittenBack(serialNumber: string): Promise<void> {

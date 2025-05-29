@@ -21,7 +21,6 @@ export interface Device {
   // Warranty information (integrated into device record)
   warrantyStartDate?: string; // YYYY-MM-DD
   warrantyEndDate?: string; // YYYY-MM-DD
-  warrantyStatus?: 'active' | 'expired' | 'unknown';
   warrantyFetchedAt?: string; // ISO datetime when warranty was last fetched
   warrantyWrittenBackAt?: string; // ISO datetime when warranty was written back to source
   

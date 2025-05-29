@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Platform } from '../types/platform';
 import { Device } from '../types/device';
 import { WarrantyInfo } from '../types/warranty';
 import { getPlatformCredentials, getManufacturerCredentials } from '../lib/storage';
-import { getAllDevices, getDevicesByPlatform } from '../lib/database';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -21,6 +21,11 @@ interface SyncOptions {
   skipExistingWarrantyInfo: boolean;
 }
 
+interface SyncDevicesProps {
+  initialDevices?: Device[];
+  initialResults?: WarrantyInfo[];
+}
+
 // Helper function to convert Device to WarrantyInfo for display
 function deviceToWarrantyInfo(device: Device): WarrantyInfo {
   return {
@@ -28,7 +33,7 @@ function deviceToWarrantyInfo(device: Device): WarrantyInfo {
     manufacturer: device.manufacturer,
     startDate: device.warrantyStartDate || '',
     endDate: device.warrantyEndDate || '',
-    status: device.warrantyStatus || 'unknown',
+    status: inferWarrantyStatus(device.warrantyEndDate),
     productDescription: device.model || 'Unknown',
     fromCache: !!device.warrantyFetchedAt,
     writtenBack: !!device.warrantyWrittenBackAt,
@@ -37,11 +42,11 @@ function deviceToWarrantyInfo(device: Device): WarrantyInfo {
   };
 }
 
-export default function SyncDevices() {
+export default function SyncDevices({ initialDevices = [], initialResults = [] }: SyncDevicesProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [results, setResults] = useState<WarrantyInfo[]>([]);
+  const [devices, setDevices] = useState<Device[]>(initialDevices);
+  const [results, setResults] = useState<WarrantyInfo[]>(initialResults);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [csvData, setCsvData] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(Platform.DATTO_RMM);
@@ -50,6 +55,7 @@ export default function SyncDevices() {
     skipExistingWarrantyInfo: true
   });
   const [configuredPlatforms, setConfiguredPlatforms] = useState<Platform[]>([]);
+  const router = useRouter();
   
   // Load configured platforms
   useEffect(() => {
@@ -70,38 +76,6 @@ export default function SyncDevices() {
     }
   }, []);
 
-  // Load database data on component mount and platform change
-  useEffect(() => {
-    loadDatabaseData();
-  }, [selectedPlatform]);
-
-  // Function to load existing database data
-  async function loadDatabaseData() {
-    try {
-      let dbDevices;
-      
-      if (selectedPlatform && selectedPlatform !== Platform.CSV) {
-        // Get devices for specific platform
-        dbDevices = await getDevicesByPlatform(selectedPlatform);
-      } else {
-        // Get all devices
-        dbDevices = await getAllDevices();
-      }
-      
-      setDevices(dbDevices);
-      
-      // Convert devices to warranty info for display
-      const warrantyResults = dbDevices
-        .filter((device: Device) => device.warrantyFetchedAt) // Only show devices with warranty data
-        .map(deviceToWarrantyInfo);
-      
-      setResults(warrantyResults);
-    } catch (error) {
-      console.error('Error loading database data:', error);
-      // Don't show error to user, just continue with empty state
-    }
-  }
-  
   // Handle sync options changes
   const handleSyncOptionChange = (option: keyof SyncOptions, value: boolean) => {
     setSyncOptions(prev => ({
@@ -113,10 +87,49 @@ export default function SyncDevices() {
   // Handle platform selection change
   const handlePlatformChange = (value: string) => {
     setSelectedPlatform(value as Platform);
-    // Reset devices and results when platform changes - loadDatabaseData will repopulate
-    setDevices([]);
-    setResults([]);
+    
+    // Filter initial devices by platform
+    if (value === Platform.CSV) {
+      // For CSV, reset to empty since CSV devices aren't stored in database
+      setDevices([]);
+      setResults([]);
+    } else {
+      // Filter devices by platform
+      const platformDevices = initialDevices.filter(device => 
+        device.sourcePlatform === value
+      );
+      setDevices(platformDevices);
+      
+      // Convert ALL devices to warranty info for display
+      const warrantyResults = platformDevices
+        
+        .map(deviceToWarrantyInfo);
+      
+      setResults(warrantyResults);
+    }
   };
+  
+  // Update devices and results when initial data changes or platform changes
+  useEffect(() => {
+    if (selectedPlatform === Platform.CSV) {
+      // For CSV, start with empty arrays
+      setDevices([]);
+      setResults([]);
+    } else {
+      // Filter devices by selected platform
+      const platformDevices = initialDevices.filter(device => 
+        device.sourcePlatform === selectedPlatform
+      );
+      setDevices(platformDevices);
+      
+      // Convert ALL devices to warranty info for display
+      const warrantyResults = platformDevices
+        
+        .map(deviceToWarrantyInfo);
+      
+      setResults(warrantyResults);
+    }
+  }, [initialDevices, selectedPlatform]);
   
   async function fetchDevicesFromPlatform() {
     setIsLoading(true);
@@ -143,8 +156,8 @@ export default function SyncDevices() {
       const fetchedDevices = await response.json();
       setDevices(fetchedDevices);
       
-      // Reload database data to show updated device list with any new devices
-      await loadDatabaseData();
+      // Refresh server data to get any new devices stored in database
+      router.refresh();
       
       return fetchedDevices;
     } catch (error) {
@@ -296,8 +309,8 @@ export default function SyncDevices() {
         setResults([...warrantyResults]); // Update results as they come in
       }
       
-      // After processing, reload database data to get updated information
-      await loadDatabaseData();
+      // Refresh server data to get updated database state after sync
+      router.refresh();
     } catch (error) {
       console.error('Processing failed:', error);
       alert('Processing failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -329,9 +342,9 @@ export default function SyncDevices() {
         const devices = parseCSVData(csv);
         setDevices(devices);
         
-        // Convert CSV devices to warranty info for display (if they have warranty data)
+        // Convert ALL CSV devices to warranty info for display
         const warrantyResults = devices
-          .filter((device: Device) => device.warrantyStartDate || device.warrantyEndDate)
+          
           .map(deviceToWarrantyInfo);
         
         setResults(warrantyResults);
@@ -370,6 +383,9 @@ export default function SyncDevices() {
     link.click();
     document.body.removeChild(link);
   }
+
+  console.log(devices);
+  console.log(results);
   
   return (
     <Card className="w-full">

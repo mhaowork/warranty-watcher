@@ -1,6 +1,7 @@
 import { Device } from '../../types/device';
 import { WarrantyInfo } from '../../types/warranty';
 import { Platform } from '../../types/platform';
+import { inferWarrantyStatus } from '../utils/warrantyUtils';
 import { 
   insertOrUpdateDevice, 
   getDeviceBySerial, 
@@ -103,13 +104,13 @@ export async function getCachedWarrantyInfo(
       return null;
     }
     
-    // Return cached warranty info
+    // Return cached warranty info with inferred status
     return {
       serialNumber: device.serialNumber,
       manufacturer: device.manufacturer,
       startDate: device.warrantyStartDate || '',
       endDate: device.warrantyEndDate || '',
-      status: device.warrantyStatus || 'unknown',
+      status: inferWarrantyStatus(device.warrantyEndDate),
       productDescription: device.model,
       fromCache: true
     };
@@ -129,8 +130,7 @@ export async function storeWarrantyInfo(
   try {
     await updateDeviceWarranty(serialNumber, {
       startDate: warrantyInfo.startDate,
-      endDate: warrantyInfo.endDate,
-      status: warrantyInfo.status
+      endDate: warrantyInfo.endDate
     });
     
     console.log(`Stored warranty info for ${serialNumber} in database`);

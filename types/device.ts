@@ -21,8 +21,8 @@ export interface Device {
   // Warranty information (integrated into device record)
   warrantyStartDate?: string; // YYYY-MM-DD
   warrantyEndDate?: string; // YYYY-MM-DD
-  warrantyFetchedAt?: string; // ISO datetime when warranty was last fetched
-  warrantyWrittenBackAt?: string; // ISO datetime when warranty was written back to source
+  warrantyFetchedAt?: number; // Unix epoch timestamp when warranty was last fetched
+  warrantyWrittenBackAt?: number; // Unix epoch timestamp when warranty was written back to source
   
   // Computed fields (not stored in DB, calculated at runtime)
   hasWarrantyInfo?: boolean;

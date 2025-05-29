@@ -112,7 +112,8 @@ export async function getCachedWarrantyInfo(
       endDate: device.warrantyEndDate || '',
       status: inferWarrantyStatus(device.warrantyEndDate),
       productDescription: device.model,
-      fromCache: true
+      fromCache: true,
+      lastUpdated: new Date(device.warrantyFetchedAt * 1000).toISOString()
     };
   } catch (error) {
     console.error(`Error getting cached warranty for ${serialNumber}:`, error);

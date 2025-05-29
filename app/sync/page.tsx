@@ -15,7 +15,7 @@ function deviceToWarrantyInfo(device: Device): WarrantyInfo {
     productDescription: device.model || 'Unknown',
     fromCache: !!device.warrantyFetchedAt,
     writtenBack: !!device.warrantyWrittenBackAt,
-    lastUpdated: device.warrantyFetchedAt,
+    lastUpdated: device.warrantyFetchedAt ? new Date(device.warrantyFetchedAt * 1000).toISOString() : undefined,
     deviceSource: device.sourcePlatform || 'Unknown'
   };
 }

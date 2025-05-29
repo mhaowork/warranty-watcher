@@ -37,7 +37,7 @@ function deviceToWarrantyInfo(device: Device): WarrantyInfo {
     productDescription: device.model || 'Unknown',
     fromCache: !!device.warrantyFetchedAt,
     writtenBack: !!device.warrantyWrittenBackAt,
-    lastUpdated: device.warrantyFetchedAt,
+    lastUpdated: device.warrantyFetchedAt ? new Date(device.warrantyFetchedAt * 1000).toISOString() : undefined,
     deviceSource: device.sourcePlatform || 'Unknown'
   };
 }
@@ -207,7 +207,7 @@ export default function SyncDevices({ initialDevices = [], initialResults = [] }
                 productDescription: device.model,
                 skipped: true,
                 fromCache: true,
-                lastUpdated: device.warrantyFetchedAt,
+                lastUpdated: device.warrantyFetchedAt ? new Date(device.warrantyFetchedAt * 1000).toISOString() : undefined,
                 deviceSource: device.sourcePlatform || selectedPlatform
               };
             }

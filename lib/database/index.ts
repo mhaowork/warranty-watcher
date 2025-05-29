@@ -46,11 +46,11 @@ function initializeDatabase(): Promise<sqlite3.Database> {
           
           warranty_start_date DATE,
           warranty_end_date DATE,
-          warranty_fetched_at DATETIME,
-          warranty_written_back_at DATETIME,
+          warranty_fetched_at INTEGER,
+          warranty_written_back_at INTEGER,
           
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at INTEGER DEFAULT (unixepoch('now')),
+          updated_at INTEGER DEFAULT (unixepoch('now'))
         );
       `;
 
@@ -101,10 +101,10 @@ interface DeviceRow {
   source_device_id: string | null;
   warranty_start_date: string | null;
   warranty_end_date: string | null;
-  warranty_fetched_at: string | null;
-  warranty_written_back_at: string | null;
-  created_at: string;
-  updated_at: string;
+  warranty_fetched_at: number | null;
+  warranty_written_back_at: number | null;
+  created_at: number;
+  updated_at: number;
 }
 
 // Helper function to map database row to Device object
@@ -171,7 +171,7 @@ export async function insertOrUpdateDevice(device: Device): Promise<void> {
       client_id, client_name, device_class, source_platform, source_device_id,
       warranty_start_date, warranty_end_date, 
       warranty_fetched_at, warranty_written_back_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch('now'))
   `;
   
   const params = [
@@ -216,13 +216,15 @@ export async function getDevicesNeedingWarrantyLookup(
   freshnessThresholdHours: number = 2160, // 3 months default (24 * 30 * 3)
   platform?: string
 ): Promise<Device[]> {
+  const thresholdTimestamp = Math.floor(Date.now() / 1000) - (freshnessThresholdHours * 3600);
+  
   let query = `
     SELECT * FROM devices 
     WHERE warranty_fetched_at IS NULL 
-       OR warranty_fetched_at < datetime('now', '-${freshnessThresholdHours} hours')
+       OR warranty_fetched_at < ?
   `;
   
-  const params: string[] = [];
+  const params: (string | number)[] = [thresholdTimestamp];
   if (platform) {
     query += ' AND source_platform = ?';
     params.push(platform);
@@ -242,8 +244,8 @@ export async function updateDeviceWarranty(serialNumber: string, warranty: {
     UPDATE devices 
     SET warranty_start_date = ?, 
         warranty_end_date = ?, 
-        warranty_fetched_at = datetime('now'),
-        updated_at = datetime('now')
+        warranty_fetched_at = unixepoch('now'),
+        updated_at = unixepoch('now')
     WHERE serial_number = ?
   `;
   
@@ -253,8 +255,8 @@ export async function updateDeviceWarranty(serialNumber: string, warranty: {
 export async function markWarrantyWrittenBack(serialNumber: string): Promise<void> {
   const query = `
     UPDATE devices 
-    SET warranty_written_back_at = datetime('now'),
-        updated_at = datetime('now')
+    SET warranty_written_back_at = unixepoch('now'),
+        updated_at = unixepoch('now')
     WHERE serial_number = ?
   `;
   
@@ -263,12 +265,14 @@ export async function markWarrantyWrittenBack(serialNumber: string): Promise<voi
 
 // Cleanup function for old devices (utility)
 export async function cleanupOldDevices(daysOld: number = 90): Promise<number> {
+  const thresholdTimestamp = Math.floor(Date.now() / 1000) - (daysOld * 24 * 3600);
+  
   const query = `
     DELETE FROM devices 
-    WHERE updated_at < datetime('now', '-${daysOld} days')
+    WHERE updated_at < ?
   `;
   
-  const result = await runStatement(query);
+  const result = await runStatement(query, [thresholdTimestamp]);
   return result.changes;
 }
 

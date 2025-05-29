@@ -12,8 +12,22 @@ function formatDate(dateString?: string): string {
   if (!dateString) return 'Never';
   
   try {
+    // dateString is now a proper ISO string in UTC from epoch conversion
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    // Format in local timezone with proper formatting
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'numeric', 
+      day: 'numeric'
+    }) + ' ' + date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true
+    });
   } catch {
     return 'Invalid Date';
   }

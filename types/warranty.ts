@@ -14,4 +14,5 @@ export interface WarrantyInfo {
   skipped?: boolean;        // Whether this device was skipped due to existing info
   error?: boolean;          // Whether there was an error processing this device
   fromCache?: boolean;      // Whether this info was retrieved from local database cache
+  lastUpdated?: string;     // ISO datetime when warranty was last fetched from API
 } 

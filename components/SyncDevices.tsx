@@ -20,6 +20,21 @@ interface SyncOptions {
   skipExistingWarrantyInfo: boolean;
 }
 
+// Helper function to convert Device to WarrantyInfo for display
+function deviceToWarrantyInfo(device: Device): WarrantyInfo {
+  return {
+    serialNumber: device.serialNumber,
+    manufacturer: device.manufacturer,
+    startDate: device.warrantyStartDate || '',
+    endDate: device.warrantyEndDate || '',
+    status: device.warrantyStatus || 'unknown',
+    productDescription: device.model || 'Unknown',
+    fromCache: !!device.warrantyFetchedAt,
+    writtenBack: !!device.warrantyWrittenBackAt,
+    lastUpdated: device.warrantyFetchedAt
+  };
+}
+
 export default function SyncDevices() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -52,6 +67,37 @@ export default function SyncDevices() {
       setSelectedPlatform(configured[0]);
     }
   }, []);
+
+  // Load database data on component mount and platform change
+  useEffect(() => {
+    loadDatabaseData();
+  }, [selectedPlatform]);
+
+  // Function to load existing database data
+  async function loadDatabaseData() {
+    try {
+      const response = await fetch('/api/database/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: selectedPlatform })
+      });
+
+      if (response.ok) {
+        const dbDevices = await response.json();
+        setDevices(dbDevices);
+        
+        // Convert devices to warranty info for display
+        const warrantyResults = dbDevices
+          .filter((device: Device) => device.warrantyFetchedAt) // Only show devices with warranty data
+          .map(deviceToWarrantyInfo);
+        
+        setResults(warrantyResults);
+      }
+    } catch (error) {
+      console.error('Error loading database data:', error);
+      // Don't show error to user, just continue with empty state
+    }
+  }
   
   // Handle sync options changes
   const handleSyncOptionChange = (option: keyof SyncOptions, value: boolean) => {
@@ -64,7 +110,7 @@ export default function SyncDevices() {
   // Handle platform selection change
   const handlePlatformChange = (value: string) => {
     setSelectedPlatform(value as Platform);
-    // Reset devices and results when platform changes
+    // Reset devices and results when platform changes - loadDatabaseData will repopulate
     setDevices([]);
     setResults([]);
   };
@@ -93,6 +139,9 @@ export default function SyncDevices() {
       
       const fetchedDevices = await response.json();
       setDevices(fetchedDevices);
+      
+      // Reload database data to show updated device list with any new devices
+      await loadDatabaseData();
       
       return fetchedDevices;
     } catch (error) {
@@ -140,7 +189,9 @@ export default function SyncDevices() {
                 endDate: device.warrantyEndDate || '',
                 status: inferWarrantyStatus(device.warrantyEndDate),
                 productDescription: device.model,
-                skipped: true
+                skipped: true,
+                fromCache: true,
+                lastUpdated: device.warrantyFetchedAt
               };
             }
 
@@ -154,11 +205,13 @@ export default function SyncDevices() {
                 endDate: device.warrantyEndDate || '',
                 status: 'unknown',
                 productDescription: device.model,
-                skipped: true
+                skipped: true,
+                fromCache: false,
+                lastUpdated: undefined
               };
             }
             
-            // Use enhanced warranty API that checks database cache first
+            // Use warranty API that checks database cache first
             const response = await fetch('/api/warranty', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -207,7 +260,11 @@ export default function SyncDevices() {
               }
             }
             
-            return { ...warranty, writtenBack };
+            return { 
+              ...warranty, 
+              writtenBack,
+              lastUpdated: warranty.fromCache ? warranty.lastUpdated : new Date().toISOString()
+            };
           } catch (error) {
             console.error('Error during warranty lookup:', error);
             // Return a default "unknown" warranty record
@@ -217,7 +274,9 @@ export default function SyncDevices() {
               startDate: '',
               endDate: '',
               status: 'unknown',
-              error: true
+              error: true,
+              fromCache: false,
+              lastUpdated: undefined
             };
           }
         });
@@ -229,6 +288,9 @@ export default function SyncDevices() {
         setProgress(Math.min(100, Math.round((i + batch.length) / devicesToProcess.length * 100)));
         setResults([...warrantyResults]); // Update results as they come in
       }
+      
+      // After processing, reload database data to get updated information
+      await loadDatabaseData();
     } catch (error) {
       console.error('Processing failed:', error);
       alert('Processing failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -259,6 +321,13 @@ export default function SyncDevices() {
       try {
         const devices = parseCSVData(csv);
         setDevices(devices);
+        
+        // Convert CSV devices to warranty info for display (if they have warranty data)
+        const warrantyResults = devices
+          .filter((device: Device) => device.warrantyStartDate || device.warrantyEndDate)
+          .map(deviceToWarrantyInfo);
+        
+        setResults(warrantyResults);
       } catch (error) {
         console.error('Failed to parse CSV:', error);
         alert('Failed to parse CSV file. Please check the format.');

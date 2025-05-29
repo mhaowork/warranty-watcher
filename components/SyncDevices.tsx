@@ -438,10 +438,6 @@ export default function SyncDevices({ initialDevices = [], initialResults = [] }
                         onCheckedChange={(checked) => {
                           const isChecked = checked === true;
                           handleSyncOptionChange('writeBackToSource', isChecked);
-                          // If write back is disabled, automatically set skipExistingWarrantyInfo to false
-                          if (!isChecked) {
-                            handleSyncOptionChange('skipExistingWarrantyInfo', false);
-                          }
                         }}
                       />
                       <Label htmlFor="writeBack">
@@ -452,12 +448,11 @@ export default function SyncDevices({ initialDevices = [], initialResults = [] }
                       <Checkbox 
                         id="skipExisting" 
                         checked={syncOptions.skipExistingWarrantyInfo}
-                        disabled={!syncOptions.writeBackToSource}
                         onCheckedChange={(checked) => 
                           handleSyncOptionChange('skipExistingWarrantyInfo', checked === true)
                         }
                       />
-                      <Label htmlFor="skipExisting" className={!syncOptions.writeBackToSource ? "text-gray-400" : ""}>
+                      <Label htmlFor="skipExisting">
                         Skip devices with existing warranty information
                       </Label>
                     </div>
@@ -507,6 +502,29 @@ export default function SyncDevices({ initialDevices = [], initialResults = [] }
                 <p className="mt-1 text-sm text-gray-500">
                   CSV must include headers for Serial Number and Manufacturer
                 </p>
+              </div>
+              
+              <div className="w-full mb-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Sync Options</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="csvSkipExisting" 
+                        checked={syncOptions.skipExistingWarrantyInfo}
+                        onCheckedChange={(checked) => 
+                          handleSyncOptionChange('skipExistingWarrantyInfo', checked === true)
+                        }
+                      />
+                      <Label htmlFor="csvSkipExisting">
+                        Skip devices with existing warranty information
+                      </Label>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Note: Write-back to source is not available for CSV uploads
+                  </p>
+                </div>
               </div>
               
               {devices.length > 0 && (

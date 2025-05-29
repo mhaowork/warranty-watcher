@@ -2,7 +2,7 @@
 
 import { WarrantyInfo } from '../types/warranty';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { CheckCircle, XCircle, MinusCircle, Database, Globe } from 'lucide-react';
+import { CheckCircle, XCircle, MinusCircle, Database, Globe, FileText, Server } from 'lucide-react';
 
 interface WarrantyResultsProps {
   data: WarrantyInfo[];
@@ -17,6 +17,19 @@ function formatDate(dateString?: string): string {
   } catch {
     return 'Invalid Date';
   }
+}
+
+function getSourceIcon(source?: string) {
+  if (!source || source === 'Unknown') {
+    return <Server className="h-4 w-4 text-gray-500 mr-1" />;
+  }
+  
+  if (source === 'CSV') {
+    return <FileText className="h-4 w-4 text-orange-500 mr-1" />;
+  }
+  
+  // For RMM platforms
+  return <Server className="h-4 w-4 text-purple-500 mr-1" />;
 }
 
 export default function WarrantyResults({ data }: WarrantyResultsProps) {
@@ -36,6 +49,7 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
           <TableHead>End Date</TableHead>
           <TableHead>Product</TableHead>
           <TableHead>Source</TableHead>
+          <TableHead>Cache Status</TableHead>
           <TableHead>Last Updated</TableHead>
           <TableHead>Write Back</TableHead>
         </TableRow>
@@ -61,15 +75,21 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
             <TableCell>{item.productDescription || 'Unknown'}</TableCell>
             <TableCell>
               <div className="flex items-center">
+                {getSourceIcon(item.deviceSource)}
+                <span className="text-xs">{item.deviceSource || 'Unknown'}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center">
                 {item.fromCache ? (
                   <>
                     <Database className="h-4 w-4 text-blue-500 mr-1" />
-                    <span className="text-xs text-blue-600">Database</span>
+                    <span className="text-xs text-blue-600">Cached</span>
                   </>
                 ) : (
                   <>
                     <Globe className="h-4 w-4 text-green-500 mr-1" />
-                    <span className="text-xs text-green-600">API</span>
+                    <span className="text-xs text-green-600">Fresh</span>
                   </>
                 )}
               </div>

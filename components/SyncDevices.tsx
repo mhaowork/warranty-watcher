@@ -5,6 +5,7 @@ import { Platform } from '../types/platform';
 import { Device } from '../types/device';
 import { WarrantyInfo } from '../types/warranty';
 import { getPlatformCredentials, getManufacturerCredentials } from '../lib/storage';
+import { getAllDevices, getDevicesByPlatform } from '../lib/database';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -31,7 +32,8 @@ function deviceToWarrantyInfo(device: Device): WarrantyInfo {
     productDescription: device.model || 'Unknown',
     fromCache: !!device.warrantyFetchedAt,
     writtenBack: !!device.warrantyWrittenBackAt,
-    lastUpdated: device.warrantyFetchedAt
+    lastUpdated: device.warrantyFetchedAt,
+    deviceSource: device.sourcePlatform || 'Unknown'
   };
 }
 
@@ -76,23 +78,24 @@ export default function SyncDevices() {
   // Function to load existing database data
   async function loadDatabaseData() {
     try {
-      const response = await fetch('/api/database/devices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform: selectedPlatform })
-      });
-
-      if (response.ok) {
-        const dbDevices = await response.json();
-        setDevices(dbDevices);
-        
-        // Convert devices to warranty info for display
-        const warrantyResults = dbDevices
-          .filter((device: Device) => device.warrantyFetchedAt) // Only show devices with warranty data
-          .map(deviceToWarrantyInfo);
-        
-        setResults(warrantyResults);
+      let dbDevices;
+      
+      if (selectedPlatform && selectedPlatform !== Platform.CSV) {
+        // Get devices for specific platform
+        dbDevices = await getDevicesByPlatform(selectedPlatform);
+      } else {
+        // Get all devices
+        dbDevices = await getAllDevices();
       }
+      
+      setDevices(dbDevices);
+      
+      // Convert devices to warranty info for display
+      const warrantyResults = dbDevices
+        .filter((device: Device) => device.warrantyFetchedAt) // Only show devices with warranty data
+        .map(deviceToWarrantyInfo);
+      
+      setResults(warrantyResults);
     } catch (error) {
       console.error('Error loading database data:', error);
       // Don't show error to user, just continue with empty state
@@ -191,7 +194,8 @@ export default function SyncDevices() {
                 productDescription: device.model,
                 skipped: true,
                 fromCache: true,
-                lastUpdated: device.warrantyFetchedAt
+                lastUpdated: device.warrantyFetchedAt,
+                deviceSource: device.sourcePlatform || selectedPlatform
               };
             }
 
@@ -207,7 +211,8 @@ export default function SyncDevices() {
                 productDescription: device.model,
                 skipped: true,
                 fromCache: false,
-                lastUpdated: undefined
+                lastUpdated: undefined,
+                deviceSource: device.sourcePlatform || selectedPlatform
               };
             }
             
@@ -263,7 +268,8 @@ export default function SyncDevices() {
             return { 
               ...warranty, 
               writtenBack,
-              lastUpdated: warranty.fromCache ? warranty.lastUpdated : new Date().toISOString()
+              lastUpdated: warranty.fromCache ? warranty.lastUpdated : new Date().toISOString(),
+              deviceSource: device.sourcePlatform || selectedPlatform
             };
           } catch (error) {
             console.error('Error during warranty lookup:', error);
@@ -276,7 +282,8 @@ export default function SyncDevices() {
               status: 'unknown',
               error: true,
               fromCache: false,
-              lastUpdated: undefined
+              lastUpdated: undefined,
+              deviceSource: device.sourcePlatform || selectedPlatform
             };
           }
         });

@@ -1,7 +1,7 @@
 export enum Platform {
   DATTO_RMM = 'DattoRMM',
   NCENTRAL = 'N-central',
-  CSV = 'csv'
+  CSV = 'CSV'
   // Future platforms would be added here
 }
 

@@ -1,14 +1,14 @@
 import { Device } from '../../types/device';
 import { WarrantyInfo } from '../../types/warranty';
 import { Platform } from '../../types/platform';
+import { Manufacturer } from '../../types/manufacturer';
+import { ManufacturerCredentials } from '../../types/credentials';
 import { inferWarrantyStatus } from '../utils/warrantyUtils';
 import { 
   insertOrUpdateDevice, 
   getDeviceBySerial, 
-  getDevicesNeedingWarrantyLookup,
   updateDeviceWarranty,
   markWarrantyWrittenBack,
-  getAllDevices
 } from '../database';
 
 export interface SyncOptions {
@@ -26,31 +26,39 @@ export interface SyncResult {
 }
 
 /**
- * Store devices from platform fetch in the database
+ * Stores a list of devices in the database, enhancing them with source information.
+ * This is the primary function for ingesting devices from any source (platform or CSV).
  */
-export async function storeDevicesFromPlatform(
+export async function storeDevicesInPool(
   devices: Device[], 
-  platform: Platform
-): Promise<void> {
-  console.log(`Storing ${devices.length} devices from ${platform} in database...`);
+  sourcePlatform: Platform
+): Promise<{ successCount: number; errorCount: number }> {
+  console.log(`Storing ${devices.length} devices from ${sourcePlatform} in database...`);
+  
+  let successCount = 0;
+  let errorCount = 0;
   
   for (const device of devices) {
     try {
-      // Enhance device with platform information
-      const deviceWithPlatform: Device = {
+      const deviceToStore: Device = {
         ...device,
-        sourcePlatform: platform,
-        sourceDeviceId: device.id
+        id: device.id || device.serialNumber, // Ensure ID for database primary key
+        sourcePlatform: sourcePlatform,
+        // Preserve existing sourceDeviceId if available, otherwise use device.id from platform
+        sourceDeviceId: device.sourceDeviceId || device.id, 
       };
-      
-      await insertOrUpdateDevice(deviceWithPlatform);
+
+      await insertOrUpdateDevice(deviceToStore);
+      successCount++;
     } catch (error) {
-      console.error(`Error storing device ${device.serialNumber}:`, error);
+      console.error(`Error storing device ${device.serialNumber} from ${sourcePlatform}:`, error);
+      errorCount++;
       // Continue with other devices even if one fails
     }
   }
   
-  console.log(`Successfully stored devices from ${platform}`);
+  console.log(`Successfully stored ${successCount} devices from ${sourcePlatform}. Errors: ${errorCount}`);
+  return { successCount, errorCount };
 }
 
 /**
@@ -155,28 +163,84 @@ export async function markWarrantyAsWrittenBack(serialNumber: string): Promise<v
 }
 
 /**
- * Get database statistics for sync reporting
+ * Fetches warranty information for a single device and stores it in the database.
+ * It first checks the cache, then external APIs if necessary.
  */
-export async function getSyncStats(): Promise<{
-  totalDevices: number;
-  devicesWithWarranty: number;
-  devicesNeedingLookup: number;
-}> {
-  try {
-    const allDevices = await getAllDevices();
-    const devicesNeedingLookup = await getDevicesNeedingWarrantyLookup();
-    
+export async function fetchAndStoreDeviceWarranty(
+  device: Device,
+  manufacturerCredentials: ManufacturerCredentials
+): Promise<WarrantyInfo> {
+  if (!device.serialNumber) {
+    console.warn(`Skipping device ID ${device.id} - no serial number.`);
     return {
-      totalDevices: allDevices.length,
-      devicesWithWarranty: allDevices.filter(d => d.hasWarrantyInfo).length,
-      devicesNeedingLookup: devicesNeedingLookup.length
+      serialNumber: device.serialNumber || 'N/A',
+      manufacturer: device.manufacturer,
+      startDate: '',
+      endDate: '',
+      status: 'unknown',
+      error: true,
+      errorMessage: 'Missing serial number',
+      fromCache: false,
+      deviceSource: device.sourcePlatform
     };
+  }
+
+  // 1. Try to get from cache (database)
+  const cachedWarranty = await getCachedWarrantyInfo(device.serialNumber);
+  if (cachedWarranty) {
+    console.log(`Using cached warranty for ${device.serialNumber}`);
+    return { ...cachedWarranty, deviceSource: device.sourcePlatform };
+  }
+
+  // 2. If not in cache, fetch from external API
+  console.log(`Fetching warranty from external API for ${device.serialNumber}`);
+  try {
+    // Placeholder for actual API call - replace with actual manufacturer API logic
+    // const manufacturerApi = getManufacturerApiService(device.manufacturer);
+    // const warrantyData = await manufacturerApi.getWarranty(device.serialNumber, manufacturerCredentials[device.manufacturer]);
+    
+    // SIMULATING API CALL FOR NOW
+    if (device.manufacturer === Manufacturer.DELL && manufacturerCredentials[Manufacturer.DELL]?.clientId) {
+      // Simulate successful Dell API call
+      const simulatedDellWarranty = {
+        startDate: '2022-01-01',
+        endDate: '2025-01-01',
+        productDescription: device.model || 'Dell Product',
+      };
+      // Ensure we pass all required fields for WarrantyInfo to storeWarrantyInfo
+      const warrantyToStore: WarrantyInfo = {
+        serialNumber: device.serialNumber,
+        manufacturer: device.manufacturer,
+        startDate: simulatedDellWarranty.startDate,
+        endDate: simulatedDellWarranty.endDate,
+        status: inferWarrantyStatus(simulatedDellWarranty.endDate),
+        productDescription: simulatedDellWarranty.productDescription,
+      };
+      await storeWarrantyInfo(device.serialNumber, warrantyToStore);
+      return {
+        ...warrantyToStore,
+        fromCache: false, // Fetched from API
+        deviceSource: device.sourcePlatform
+      };
+    } else if (device.manufacturer === Manufacturer.HP /* && check HP creds */) {
+      // TODO: Implement HP API call simulation
+      throw new Error(`HP API not implemented yet for ${device.manufacturer}`);
+    } else {
+      throw new Error(`Unsupported manufacturer or invalid/missing credentials for ${device.manufacturer}`);
+    }
+
   } catch (error) {
-    console.error('Error getting sync stats:', error);
+    console.error(`Error fetching warranty for ${device.serialNumber} from external API:`, error);
     return {
-      totalDevices: 0,
-      devicesWithWarranty: 0,
-      devicesNeedingLookup: 0
+      serialNumber: device.serialNumber,
+      manufacturer: device.manufacturer,
+      startDate: '',
+      endDate: '',
+      status: 'unknown',
+      error: true,
+      errorMessage: error instanceof Error ? error.message : 'API fetch failed',
+      fromCache: false,
+      deviceSource: device.sourcePlatform
     };
   }
 }

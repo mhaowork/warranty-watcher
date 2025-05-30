@@ -1,21 +1,10 @@
 export enum Manufacturer {
-  DELL = 'dell',
-  HP = 'hp',
-  LENOVO = 'lenovo',
-  APPLE = 'apple',
-  MICROSOFT = 'microsoft',
+  DELL = 'Dell',
+  HP = 'HP',
+  LENOVO = 'Lenovo',
+  APPLE = 'Apple',
+  MICROSOFT = 'Microsoft',
   // Future manufacturers would be added here
 }
 
-export interface ManufacturerCredentials {
-  [Manufacturer.DELL]?: {
-    clientId?: string;
-    clientSecret?: string;
-  };
-  [Manufacturer.HP]?: {
-    apiKey?: string;
-  };
-  [Manufacturer.LENOVO]?: {
-    apiKey?: string;
-  };
-} 
+// ManufacturerCredentials interface removed as it's defined in types/credentials.ts 

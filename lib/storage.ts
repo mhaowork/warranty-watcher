@@ -1,6 +1,6 @@
 'use client';
 
-import { ManufacturerCredentials } from '../types/manufacturer';
+import { ManufacturerCredentials } from '../types/credentials';
 import { PlatformCredentials } from '../types/platform';
 
 // Simple getter/setter functions for manufacturer credentials

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Platform } from '../../../../types/platform';
 import { fetchDattoDevices } from '../../../../lib/platforms/datto';
 import { fetchNCentralDevices } from '../../../../lib/platforms/ncentral';
-import { storeDevicesFromPlatform } from '../../../../lib/services/warrantySync';
+import { storeDevicesInPool } from '../../../../lib/services/warrantySync';
 
 export async function POST(request: Request) {
   try {
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     
     // Store devices in database for caching and tracking
     if (devices && devices.length > 0) {
-      await storeDevicesFromPlatform(devices, platform);
-      console.log(`Stored ${devices.length} devices from ${platform} in database`);
+      const result = await storeDevicesInPool(devices, platform);
+      console.log(`Stored ${result.successCount} of ${devices.length} devices from ${platform} in database`);
     }
     
     return NextResponse.json(devices);

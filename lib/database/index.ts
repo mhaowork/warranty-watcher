@@ -165,33 +165,105 @@ function runStatement(
 
 // Basic CRUD operations
 export async function insertOrUpdateDevice(device: Device): Promise<void> {
-  const query = `
-    INSERT OR REPLACE INTO devices (
-      id, serial_number, manufacturer, model, hostname, 
-      client_id, client_name, device_class, source_platform, source_device_id,
-      warranty_start_date, warranty_end_date, 
-      warranty_fetched_at, warranty_written_back_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch('now'))
-  `;
+  // Validate required fields
+  if (!device.serialNumber?.trim() || !device.manufacturer?.trim()) {
+    throw new Error(`Device missing required fields: serialNumber='${device.serialNumber}', manufacturer='${device.manufacturer}'`);
+  }
+
+  // Check if device already exists by serial number
+  const existingDevice = await getDeviceBySerial(device.serialNumber);
   
-  const params = [
-    device.id || device.serialNumber, // Use serialNumber as fallback ID
-    device.serialNumber,
-    device.manufacturer,
-    device.model || null,
-    device.hostname || null,
-    device.clientId || null,
-    device.clientName || null,
-    device.deviceClass || null,
-    device.sourcePlatform || null,
-    device.sourceDeviceId || null,
-    device.warrantyStartDate || null,
-    device.warrantyEndDate || null,
-    device.warrantyFetchedAt || null,
-    device.warrantyWrittenBackAt || null
-  ];
-  
-  await runStatement(query, params);
+  if (existingDevice) {
+    // Device exists - perform intelligent merge
+    // Preserve existing warranty data if it's more complete than incoming data
+    const mergedDevice: Device = {
+      ...device, // Start with incoming device data
+      id: existingDevice.id, // Keep existing database ID
+      // Preserve existing warranty data if it exists and incoming doesn't have it
+      warrantyStartDate: device.warrantyStartDate || existingDevice.warrantyStartDate,
+      warrantyEndDate: device.warrantyEndDate || existingDevice.warrantyEndDate,
+      warrantyFetchedAt: device.warrantyFetchedAt || existingDevice.warrantyFetchedAt,
+      warrantyWrittenBackAt: device.warrantyWrittenBackAt || existingDevice.warrantyWrittenBackAt,
+      // Update other fields from incoming data, but fall back to existing if not provided
+      model: device.model || existingDevice.model,
+      hostname: device.hostname || existingDevice.hostname,
+      clientId: device.clientId || existingDevice.clientId,
+      clientName: device.clientName || existingDevice.clientName,
+      deviceClass: device.deviceClass || existingDevice.deviceClass,
+      // Always update source information if provided (device might be found in multiple platforms)
+      sourcePlatform: device.sourcePlatform || existingDevice.sourcePlatform,
+      sourceDeviceId: device.sourceDeviceId || existingDevice.sourceDeviceId,
+    };
+    
+    // Perform UPDATE operation
+    const updateQuery = `
+      UPDATE devices 
+      SET manufacturer = ?, 
+          model = ?, 
+          hostname = ?, 
+          client_id = ?, 
+          client_name = ?, 
+          device_class = ?, 
+          source_platform = ?, 
+          source_device_id = ?,
+          warranty_start_date = ?, 
+          warranty_end_date = ?, 
+          warranty_fetched_at = ?, 
+          warranty_written_back_at = ?,
+          updated_at = unixepoch('now')
+      WHERE serial_number = ?
+    `;
+    
+    const updateParams = [
+      mergedDevice.manufacturer,
+      mergedDevice.model || null,
+      mergedDevice.hostname || null,
+      mergedDevice.clientId || null,
+      mergedDevice.clientName || null,
+      mergedDevice.deviceClass || null,
+      mergedDevice.sourcePlatform || null,
+      mergedDevice.sourceDeviceId || null,
+      mergedDevice.warrantyStartDate || null,
+      mergedDevice.warrantyEndDate || null,
+      mergedDevice.warrantyFetchedAt || null,
+      mergedDevice.warrantyWrittenBackAt || null,
+      device.serialNumber
+    ];
+    
+    await runStatement(updateQuery, updateParams);
+    console.log(`Updated existing device: ${device.serialNumber}`);
+  } else {
+    // Device doesn't exist - perform INSERT operation
+    const insertQuery = `
+      INSERT INTO devices (
+        id, serial_number, manufacturer, model, hostname, 
+        client_id, client_name, device_class, source_platform, source_device_id,
+        warranty_start_date, warranty_end_date, 
+        warranty_fetched_at, warranty_written_back_at, 
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch('now'), unixepoch('now'))
+    `;
+    
+    const insertParams = [
+      device.id || device.serialNumber, // Use serialNumber as fallback ID
+      device.serialNumber,
+      device.manufacturer,
+      device.model || null,
+      device.hostname || null,
+      device.clientId || null,
+      device.clientName || null,
+      device.deviceClass || null,
+      device.sourcePlatform || null,
+      device.sourceDeviceId || null,
+      device.warrantyStartDate || null,
+      device.warrantyEndDate || null,
+      device.warrantyFetchedAt || null,
+      device.warrantyWrittenBackAt || null
+    ];
+    
+    await runStatement(insertQuery, insertParams);
+    console.log(`Inserted new device: ${device.serialNumber}`);
+  }
 }
 
 export async function getDeviceBySerial(serialNumber: string): Promise<Device | null> {
@@ -209,30 +281,6 @@ export async function getAllDevices(): Promise<Device[]> {
 export async function getDevicesByPlatform(platform: string): Promise<Device[]> {
   const query = 'SELECT * FROM devices WHERE source_platform = ? ORDER BY updated_at DESC';
   const rows = await runQuery<DeviceRow>(query, [platform]);
-  return rows.map(mapRowToDevice);
-}
-
-export async function getDevicesNeedingWarrantyLookup(
-  freshnessThresholdHours: number = 2160, // 3 months default (24 * 30 * 3)
-  platform?: string
-): Promise<Device[]> {
-  const thresholdTimestamp = Math.floor(Date.now() / 1000) - (freshnessThresholdHours * 3600);
-  
-  let query = `
-    SELECT * FROM devices 
-    WHERE warranty_fetched_at IS NULL 
-       OR warranty_fetched_at < ?
-  `;
-  
-  const params: (string | number)[] = [thresholdTimestamp];
-  if (platform) {
-    query += ' AND source_platform = ?';
-    params.push(platform);
-  }
-  
-  query += ' ORDER BY updated_at DESC';
-  
-  const rows = await runQuery<DeviceRow>(query, params);
   return rows.map(mapRowToDevice);
 }
 

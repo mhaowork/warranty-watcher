@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -29,23 +29,23 @@ const manufacturerSchema = z.object({
     },
     {
       message: "Both Client ID and Client Secret are required if either is provided",
-      path: [] // Shows error at the object level
+      path: ['clientId'] // Attach error to clientId field to aid display
     }
   ),
   [Manufacturer.HP]: z.object({
-    apiKey: z.string().optional(),
+    apiKey: z.string(),
   }),
   [Manufacturer.LENOVO]: z.object({
-    apiKey: z.string().optional(),
+    apiKey: z.string(),
   }),
 });
 
 // Platform credentials schema
 const platformSchema = z.object({
   [Platform.DATTO_RMM]: z.object({
-    url: z.string().optional(),
-    apiKey: z.string().optional(),
-    secretKey: z.string().optional(),
+    url: z.string(),
+    apiKey: z.string(),
+    secretKey: z.string(),
   })
   .refine(
     data => {
@@ -56,32 +56,29 @@ const platformSchema = z.object({
     },
     {
       message: "All Datto RMM fields are required if any of them are filled",
-      path: [] // Shows the error at the object level
+      path: ['url'] // Attach error to url field to aid display
     }
   ),
   [Platform.NCENTRAL]: z.object({
-    serverUrl: z.string().optional(),
-    apiToken: z.string().optional(),
+    serverUrl: z.string(),
+    apiToken: z.string(),
   })
   .refine(
     data => {
       // If any field is filled, all fields are required
       const hasAnyValue = data.serverUrl || data.apiToken;
       if (!hasAnyValue) return true; // All fields are empty, that's valid
+      console.log('result', Boolean(data.serverUrl && data.apiToken)); // this returns false in my testing
       return Boolean(data.serverUrl && data.apiToken);
     },
     {
       message: "All N-central fields are required if any of them are filled",
-      path: [] // Shows the error at the object level
+      path: ['serverUrl'] // Attach error to serverUrl field to aid display
     }
   ),
-  [Platform.CSV]: z.object({}),
 });
 
 export default function ConfigForm() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [activeTab, setActiveTab] = useState<'manufacturer' | 'platform'>('manufacturer');
-  
   // Manufacturer form
   const manufacturerForm = useForm<z.infer<typeof manufacturerSchema>>({
     resolver: zodResolver(manufacturerSchema),
@@ -98,7 +95,6 @@ export default function ConfigForm() {
     defaultValues: {
       [Platform.DATTO_RMM]: { url: '', apiKey: '', secretKey: '' },
       [Platform.NCENTRAL]: { serverUrl: '', apiToken: '' },
-      [Platform.CSV]: {},
     },
   });
   
@@ -180,7 +176,7 @@ export default function ConfigForm() {
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="manufacturer" onValueChange={(value) => setActiveTab(value as 'manufacturer' | 'platform')}>
+        <Tabs defaultValue="manufacturer">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="manufacturer">Manufacturers</TabsTrigger>
             <TabsTrigger value="platform">Platforms</TabsTrigger>

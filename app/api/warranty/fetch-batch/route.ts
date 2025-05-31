@@ -3,6 +3,7 @@ import { Device } from '../../../../types/device';
 import { WarrantyInfo } from '../../../../types/warranty';
 import { ManufacturerCredentials } from '../../../../types/credentials';
 import { fetchAndStoreDeviceWarranty } from '../../../../lib/services/warrantySync';
+import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 
 interface BatchFetchRequest {
   devices: Device[];
@@ -12,7 +13,7 @@ interface BatchFetchRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: BatchFetchRequest = await request.json();
-    const { devices, credentials } = body;
+    const { devices, credentials, skipExistingForLookup } = body;
 
     if (!devices || devices.length === 0) {
       return NextResponse.json({ message: 'No devices provided for warranty lookup.', results: [] });
@@ -49,6 +50,16 @@ export async function POST(request: NextRequest) {
             fromCache: false, // It wasn't looked up
             deviceSource: device.sourcePlatform,
             skipped: true,
+          });
+          continue;
+        }
+
+        if (skipExistingForLookup && device.warrantyFetchedAt) {
+          console.log(`Skipping ${device.serialNumber} (lookup) - already has warranty info`);
+          results.push({
+            ...deviceToWarrantyInfo(device),
+            skipped: true,
+            fromCache: true,
           });
           continue;
         }

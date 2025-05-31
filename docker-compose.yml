@@ -1,16 +1,17 @@
-version: '3'
+version: '3.8'
 
 services:
   app:
     build:
       context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      # Only mount the data directory for database persistence
+      - ./data:/app/data
     environment:
       - NODE_ENV=production
+      - DB_PATH=/app/data/warranty.db
     restart: unless-stopped
     command: node .next/standalone/server.js 

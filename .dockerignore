@@ -25,6 +25,9 @@ Dockerfile.dev
 docker-compose.yml
 .dockerignore
 
+# Database (should be volume mounted, not baked into image)
+data/
+
 # Misc
 README.md
 LICENSE

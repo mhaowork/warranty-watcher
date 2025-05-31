@@ -11,7 +11,8 @@ Demo: https://demo.warrantywatcher.com/
 
 - **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information
 - **Manufacturer API Integration:** Query multiple manufacturer warranty APIs to determine warranty status
-- **Local Storage:** All configuration is stored in the browser's local storage for privacy
+- **Local Database:** Device information is stored in a local SQLite database for persistence and performance
+- **Local API Credential Storage:** Configuration is stored in the browser's local storage for privacy
 - **CSV Import:** Import device information via CSV file
 - **Reporting:** 🚧 Generate and export warranty status reports🚧 (Work-in-progress)
 
@@ -40,44 +41,41 @@ Demo: https://demo.warrantywatcher.com/
 
 ### Prerequisites
 
-- Node.js 18.0.0 or later
-- Docker (optional, for containerized deployment)
+- **For Production:** Docker
+- **For Development:** Node.js 18.0.0 or later
 
-### Installation
+### Production Deployment
 
+#### Option 1: Docker Hub Image (Recommended)
+```bash
+docker run -p 3000:3000 -v ./data:/app/data -e DB_PATH=/app/data/warranty.db mhaowork/warrantywatcher:latest
+```
+Note: your device database will be saved in the `data` folder under your current directory
 
-#### Deployment
-1. Run with Docker directly
-   ```
-   docker run -p 3000:3000 mhaowork/warrantywatcher:latest
-   ```
+#### Option 2: Build from Source
+```bash
+git clone https://github.com/mhaowork/warranty-watcher.git
+cd warranty-watcher
+docker-compose up -d
+```
 
-   Tip: swap `-p` with `-d -p` to run it in the background
+Access the application at [http://localhost:3000](http://localhost:3000).
 
-2. Access the application at [http://localhost:3000](http://localhost:3000). That's it!
-
-3. Alternatively, if you want to build from source:
-   ```
-   git clone https://github.com/mhaowork/warranty-watcher.git
-   cd warranty-watcher
-   docker-compose up -d
-   ```
-
-#### Local Development (Ignore this unless you want to change the code Or don't want to use Docker)
+### Development Setup (Ignore this unless you want to change the code Or don't want to use Docker)
 
 1. Clone the repository
-   ```
+   ```bash
    git clone https://github.com/mhaowork/warranty-watcher.git
    cd warranty-watcher
    ```
 
 2. Install dependencies
-   ```
+   ```bash
    npm install
    ```
 
 3. Run the development server
-   ```
+   ```bash
    npm run dev
    ```
 

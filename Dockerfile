@@ -14,6 +14,13 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
+
+# Copy static files for standalone build
+RUN cp -r .next/static .next/standalone/.next/static
+RUN cp -r public .next/standalone/public
+
 EXPOSE 3000
 
 ENV PORT=3000

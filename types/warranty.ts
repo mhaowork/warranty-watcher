@@ -16,5 +16,4 @@ export interface WarrantyInfo {
   lastUpdated?: string;     // ISO datetime when warranty was last fetched from API
   deviceSource?: string;    // Platform where device originally came from (CSV, Datto RMM, etc.)
   errorMessage?: string;    // For displaying specific error messages
-  isLoadingWarranty?: boolean; // UI-specific: true if warranty is currently being fetched
 } 

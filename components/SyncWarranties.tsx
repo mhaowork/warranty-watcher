@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import WarrantyResults from './WarrantyResults';
+import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
 
 interface SyncWarrantiesProps {
   devices: Device[];
@@ -29,8 +30,12 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   const router = useRouter();
   
   useEffect(() => {
-    setResults(devices.map(deviceToWarrantyInfo));
-  }, [devices]);
+    // Only reset results to device data if we're not in the middle of an operation
+    // and don't have fresh lookup results
+    if (!isLoading && !currentAction) {
+      setResults(devices.map(deviceToWarrantyInfo));
+    }
+  }, [devices, isLoading, currentAction]);
 
   async function lookupAllWarranties() {
     if (!devices.length) {
@@ -41,8 +46,9 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     setIsLoading(true);
     setCurrentAction('lookup');
     setProgress(0);
-    // Initialize results with isLoadingWarranty true for all devices being processed
-    setResults(devices.map(d => ({ ...deviceToWarrantyInfo(d), isLoadingWarranty: true })));
+    // Initialize results with all devices being processed
+    const initialResults = devices.map(d => deviceToWarrantyInfo(d));
+    setResults(initialResults);
 
     try {
       const result = await lookupWarrantiesForDevices(devices, {
@@ -55,8 +61,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
       }
 
       setResults(result.results);
-      // Refresh server data to get updated database state after sync
-      router.refresh();
+      // Note: Removed router.refresh() to preserve API results
     } catch (error) {
       console.error('Warranty lookup failed:', error);
       alert('Warranty lookup failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -64,14 +69,10 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         ...deviceToWarrantyInfo(d),
         error: true,
         errorMessage: (error instanceof Error ? error.message : 'Overall lookup processing failed'),
-        isLoadingWarranty: false,
       }));
       setResults(errorResults);
     } finally {
       setIsLoading(false);
-      setCurrentAction(null);
-      // Ensure isLoadingWarranty is false for all results on completion or error
-      setResults(prevResults => prevResults.map(r => ({ ...r, isLoadingWarranty: false })));
     }
   }
 
@@ -166,11 +167,12 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     
     const csvContent = 
       "data:text/csv;charset=utf-8," + 
-      "Serial Number,Manufacturer,Status,Start Date,End Date,Product Description,Written Back,Skipped,Error,Error Message,From Cache,Last Updated,Device Source\n" + 
+      "Serial Number,Manufacturer,Status,Start Date,End Date,Product Description,Written Back,Skipped,Error,Error Message,Last Updated,Device Source\n" + 
       results.map(item => 
         [
           item.serialNumber,
           item.manufacturer,
+          inferWarrantyStatus(item.endDate),
           item.startDate,
           item.endDate,
           item.productDescription || '',
@@ -178,7 +180,6 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           item.skipped ? 'Yes' : 'No',
           item.error ? 'Yes' : 'No',
           item.errorMessage || '',
-          item.fromCache ? 'Yes' : 'No',
           item.lastUpdated || '',
           item.deviceSource || ''
         ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(",") // Quote all fields and escape quotes

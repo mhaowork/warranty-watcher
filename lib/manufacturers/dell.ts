@@ -79,81 +79,76 @@ async function fetchDellWarrantyData(
   clientId: string,
   clientSecret: string
 ): Promise<WarrantyInfo> {
-  try {
-    // Get authentication token
-    const token = await getDellAuthToken(clientId, clientSecret);
-    
-    // Call Dell warranty API
-    const response = await axios.get<DellDeviceInfo[]>(
-      'https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements',
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        params: {
-          servicetags: serialNumber
-        }
-      }
-    );
-    
-    // The API returns an array of devices
-    if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-      console.error('Invalid response format from Dell API:', response.data);
-      throw new Error('Invalid response format from Dell API - expected array');
-    }
-    
-    // Get the device info
-    const deviceInfo = response.data[0];
-    
-    // Validate device found
-    if (deviceInfo.invalid) {
-      throw new Error(`Invalid service tag: ${serialNumber}`);
-    }
-    
-    // Check if the device has entitlements
-    if (!deviceInfo.entitlements || deviceInfo.entitlements.length === 0) {
-      throw new Error(`No warranty entitlements found for ${serialNumber}`);
-    }
-    
-    // Filter out non-hardware warranty entitlements
-    const validEntitlements = deviceInfo.entitlements.filter(
-      e => !SLC_BLACKLIST.includes(e.serviceLevelCode)
-    );
-    
-    if (validEntitlements.length === 0) {
-      throw new Error(`No valid warranty entitlements found for ${serialNumber}`);
-    }
-    
-    // Sort dates to find start and end dates
-    const startDates = validEntitlements.map(e => new Date(e.startDate)).sort((a, b) => a.getTime() - b.getTime());
-    const endDates = validEntitlements.map(e => new Date(e.endDate)).sort((a, b) => b.getTime() - a.getTime());
-    
-    const startDate = startDates[0].toISOString().split('T')[0];
-    const endDate = endDates[0].toISOString().split('T')[0];
-    
-    // Get unique service descriptions
-    const coverageDetails = Array.from(new Set(
-      validEntitlements.map(e => e.serviceLevelDescription)
-    ));
-    
-    // Use product description if available
-    const productDescription = deviceInfo.systemDescription || 
-                              deviceInfo.productLineDescription || 
-                              'Dell Product';
+  // Get authentication token
+  const token = await getDellAuthToken(clientId, clientSecret);
 
-    return {
-      serialNumber,
-      manufacturer: Manufacturer.DELL,
-      startDate,
-      endDate,
-      productDescription,
-      coverageDetails
-    };
-  } catch (error) {
-    console.error('Error fetching Dell warranty data:', error);
-    throw error;
+  // Call Dell warranty API
+  const response = await axios.get<DellDeviceInfo[]>(
+    'https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements',
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      params: {
+        servicetags: serialNumber
+      }
+    }
+  );
+
+  // The API returns an array of devices
+  if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+    console.error('Invalid response format from Dell API:', response.data);
+    throw new Error('Invalid response format from Dell API - expected array');
   }
+
+  // Get the device info
+  const deviceInfo = response.data[0];
+
+  // Validate device found
+  if (deviceInfo.invalid) {
+    throw new Error(`Invalid service tag: ${serialNumber}`);
+  }
+
+  // Check if the device has entitlements
+  if (!deviceInfo.entitlements || deviceInfo.entitlements.length === 0) {
+    throw new Error(`No warranty entitlements found for ${serialNumber}`);
+  }
+
+  // Filter out non-hardware warranty entitlements
+  const validEntitlements = deviceInfo.entitlements.filter(
+    e => !SLC_BLACKLIST.includes(e.serviceLevelCode)
+  );
+
+  if (validEntitlements.length === 0) {
+    throw new Error(`No valid warranty entitlements found for ${serialNumber}`);
+  }
+
+  // Sort dates to find start and end dates
+  const startDates = validEntitlements.map(e => new Date(e.startDate)).sort((a, b) => a.getTime() - b.getTime());
+  const endDates = validEntitlements.map(e => new Date(e.endDate)).sort((a, b) => b.getTime() - a.getTime());
+
+  const startDate = startDates[0].toISOString().split('T')[0];
+  const endDate = endDates[0].toISOString().split('T')[0];
+
+  // Get unique service descriptions
+  const coverageDetails = Array.from(new Set(
+    validEntitlements.map(e => e.serviceLevelDescription)
+  ));
+
+  // Use product description if available
+  const productDescription = deviceInfo.systemDescription ||
+    deviceInfo.productLineDescription ||
+    'Dell Product';
+
+  return {
+    serialNumber,
+    manufacturer: Manufacturer.DELL,
+    startDate,
+    endDate,
+    productDescription,
+    coverageDetails
+  };
 }
 
 // Mock Dell data for demos
@@ -203,17 +198,12 @@ export async function getDellWarrantyInfo(
 ): Promise<WarrantyInfo> {
   // Check if both clientId and clientSecret are provided
   if (clientId && clientSecret) {
-    try {
-      const warranty = await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
-      console.log(`Found Dell warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
-      return warranty;
-    } catch (error) {
-      console.error('Error using Dell API:', error);
-      throw error;
-    }
+    const warranty = await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
+    console.log(`Found Dell warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+    return warranty;
   } else {
     console.log('clientId / clientSecret is not provided, falling back to mock implementation');
   }
-  
+
   return getMockDellWarrantyInfo(serialNumber);
 } 

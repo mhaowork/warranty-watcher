@@ -8,6 +8,7 @@ import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 interface BatchFetchRequest {
   devices: Device[];
   credentials: ManufacturerCredentials;
+  skipExistingForLookup: boolean;
 }
 
 export async function POST(request: NextRequest) {

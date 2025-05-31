@@ -207,7 +207,6 @@ export async function fetchAndStoreDeviceWarranty(
     }
 
   } catch (error) {
-    console.log('error', error);
     console.error(`Error fetching warranty for ${device.serialNumber} from external API:`, error);
     return {
       serialNumber: device.serialNumber,

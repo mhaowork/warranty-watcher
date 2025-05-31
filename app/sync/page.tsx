@@ -3,6 +3,9 @@ import SyncWarranties from '../../components/SyncWarranties';
 import { getAllDevices } from '../../lib/database';
 import { Device } from '../../types/device';
 
+// Force this page to be dynamic (not statically generated)
+export const dynamic = 'force-dynamic';
+
 export default async function SyncPage() {
   // Load initial database data on the server
   let initialDevices: Device[] = [];

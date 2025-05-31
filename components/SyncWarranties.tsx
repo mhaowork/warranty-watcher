@@ -182,7 +182,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           item.errorMessage || '',
           item.lastUpdated || '',
           item.deviceSource || ''
-        ].map(field => `"${String(field || '').replace(/"/g, '""')}"`).join(",") // Quote all fields and escape quotes
+        ].map(field => String(field || '').replace(/,/g, ' ')).join(",") // Replace commas with spaces to prevent CSV issues
       ).join("\n");
     
     const encodedUri = encodeURI(csvContent);

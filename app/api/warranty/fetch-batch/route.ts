@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
             manufacturer: device.manufacturer,
             startDate: '',
             endDate: '',
-            status: 'unknown',
             error: true,
             errorMessage: 'Missing serial number',
             fromCache: false, // It wasn't looked up
@@ -63,7 +62,6 @@ export async function POST(request: NextRequest) {
           manufacturer: device.manufacturer,
           startDate: '',
           endDate: '',
-          status: 'unknown',
           error: true,
           errorMessage: e instanceof Error ? e.message : 'Batch processing failed catastrophically for this device',
           fromCache: false,

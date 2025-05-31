@@ -3,7 +3,9 @@ import { WarrantyInfo } from '../../types/warranty';
 import { Platform } from '../../types/platform';
 import { Manufacturer } from '../../types/manufacturer';
 import { ManufacturerCredentials } from '../../types/credentials';
-import { inferWarrantyStatus } from '../utils/warrantyUtils';
+import { getDellWarrantyInfo } from '../manufacturers/dell';
+import { getHpWarrantyInfo } from '../manufacturers/hp';
+import { getLenovoWarrantyInfo } from '../manufacturers/lenovo';
 import { 
   insertOrUpdateDevice, 
   getDeviceBySerial, 
@@ -100,36 +102,6 @@ export async function getDevicesForWarrantySync(
 }
 
 /**
- * Get cached warranty info from database if available
- */
-export async function getCachedWarrantyInfo(
-  serialNumber: string
-): Promise<WarrantyInfo | null> {
-  try {
-    const device = await getDeviceBySerial(serialNumber);
-    
-    if (!device || !device.warrantyFetchedAt) {
-      return null;
-    }
-    
-    // Return cached warranty info with inferred status
-    return {
-      serialNumber: device.serialNumber,
-      manufacturer: device.manufacturer,
-      startDate: device.warrantyStartDate || '',
-      endDate: device.warrantyEndDate || '',
-      status: inferWarrantyStatus(device.warrantyEndDate),
-      productDescription: device.model,
-      fromCache: true,
-      lastUpdated: new Date(device.warrantyFetchedAt * 1000).toISOString()
-    };
-  } catch (error) {
-    console.error(`Error getting cached warranty for ${serialNumber}:`, error);
-    return null;
-  }
-}
-
-/**
  * Store warranty info in database after successful API lookup
  */
 export async function storeWarrantyInfo(
@@ -177,7 +149,6 @@ export async function fetchAndStoreDeviceWarranty(
       manufacturer: device.manufacturer,
       startDate: '',
       endDate: '',
-      status: 'unknown',
       error: true,
       errorMessage: 'Missing serial number',
       fromCache: false,
@@ -185,46 +156,52 @@ export async function fetchAndStoreDeviceWarranty(
     };
   }
 
-  // 1. Try to get from cache (database)
-  const cachedWarranty = await getCachedWarrantyInfo(device.serialNumber);
-  if (cachedWarranty) {
-    console.log(`Using cached warranty for ${device.serialNumber}`);
-    return { ...cachedWarranty, deviceSource: device.sourcePlatform };
-  }
-
-  // 2. If not in cache, fetch from external API
   console.log(`Fetching warranty from external API for ${device.serialNumber}`);
   try {
-    // Placeholder for actual API call - replace with actual manufacturer API logic
-    // const manufacturerApi = getManufacturerApiService(device.manufacturer);
-    // const warrantyData = await manufacturerApi.getWarranty(device.serialNumber, manufacturerCredentials[device.manufacturer]);
-    
-    // SIMULATING API CALL FOR NOW
-    if (device.manufacturer === Manufacturer.DELL && manufacturerCredentials[Manufacturer.DELL]?.clientId) {
-      // Simulate successful Dell API call
-      const simulatedDellWarranty = {
-        startDate: '2022-01-01',
-        endDate: '2025-01-01',
-        productDescription: device.model || 'Dell Product',
-      };
-      // Ensure we pass all required fields for WarrantyInfo to storeWarrantyInfo
-      const warrantyToStore: WarrantyInfo = {
-        serialNumber: device.serialNumber,
-        manufacturer: device.manufacturer,
-        startDate: simulatedDellWarranty.startDate,
-        endDate: simulatedDellWarranty.endDate,
-        status: inferWarrantyStatus(simulatedDellWarranty.endDate),
-        productDescription: simulatedDellWarranty.productDescription,
-      };
-      await storeWarrantyInfo(device.serialNumber, warrantyToStore);
+    // Use manufacturer-specific API implementations
+    if (device.manufacturer === Manufacturer.DELL) {
+      const dellCredentials = manufacturerCredentials[Manufacturer.DELL];
+      const warrantyData = await getDellWarrantyInfo(
+        device.serialNumber,
+        dellCredentials?.clientId,
+        dellCredentials?.clientSecret
+      );
+      
+      // Store the warranty data in database
+      await storeWarrantyInfo(device.serialNumber, warrantyData);
+      
       return {
-        ...warrantyToStore,
-        fromCache: false, // Fetched from API
+        ...warrantyData,
         deviceSource: device.sourcePlatform
       };
-    } else if (device.manufacturer === Manufacturer.HP /* && check HP creds */) {
-      // TODO: Implement HP API call simulation
-      throw new Error(`HP API not implemented yet for ${device.manufacturer}`);
+    } else if (device.manufacturer === Manufacturer.HP) {
+      const hpCredentials = manufacturerCredentials[Manufacturer.HP];
+      const warrantyData = await getHpWarrantyInfo(
+        device.serialNumber,
+        hpCredentials?.apiKey
+      );
+      
+      // Store the warranty data in database
+      await storeWarrantyInfo(device.serialNumber, warrantyData);
+      
+      return {
+        ...warrantyData,
+        deviceSource: device.sourcePlatform
+      };
+    } else if (device.manufacturer === Manufacturer.LENOVO) {
+      const lenovoCredentials = manufacturerCredentials[Manufacturer.LENOVO];
+      const warrantyData = await getLenovoWarrantyInfo(
+        device.serialNumber,
+        lenovoCredentials?.apiKey
+      );
+      
+      // Store the warranty data in database
+      await storeWarrantyInfo(device.serialNumber, warrantyData);
+      
+      return {
+        ...warrantyData,
+        deviceSource: device.sourcePlatform
+      };
     } else {
       throw new Error(`Unsupported manufacturer or invalid/missing credentials for ${device.manufacturer}`);
     }
@@ -236,10 +213,8 @@ export async function fetchAndStoreDeviceWarranty(
       manufacturer: device.manufacturer,
       startDate: '',
       endDate: '',
-      status: 'unknown',
       error: true,
       errorMessage: error instanceof Error ? error.message : 'API fetch failed',
-      fromCache: false,
       deviceSource: device.sourcePlatform
     };
   }

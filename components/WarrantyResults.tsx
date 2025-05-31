@@ -1,5 +1,6 @@
 'use client';
 
+import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
 import { WarrantyInfo } from '../types/warranty';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { CheckCircle, XCircle, MinusCircle, FileText, Server } from 'lucide-react';
@@ -75,12 +76,12 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
             <TableCell>
               <span 
                 className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  item.status === 'active' ? 'bg-green-100 text-green-800' : 
-                  item.status === 'expired' ? 'bg-red-100 text-red-800' : 
+                  inferWarrantyStatus(item.endDate) === 'active' ? 'bg-green-100 text-green-800' : 
+                  inferWarrantyStatus(item.endDate) === 'expired' ? 'bg-red-100 text-red-800' : 
                   'bg-gray-100 text-gray-800'
                 }`}
               >
-                {item.status}
+                {inferWarrantyStatus(item.endDate)}
               </span>
             </TableCell>
             <TableCell>{item.startDate || 'Unknown'}</TableCell>

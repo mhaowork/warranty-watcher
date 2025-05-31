@@ -110,7 +110,6 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
                 manufacturer: resultInfo.manufacturer,
                 startDate: resultInfo.startDate,
                 endDate: resultInfo.endDate,
-                status: resultInfo.status,
                 productDescription: resultInfo.productDescription,
               },
               credentials: platformCreds[originalDevice.sourcePlatform as Platform],
@@ -172,7 +171,6 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         [
           item.serialNumber,
           item.manufacturer,
-          item.status,
           item.startDate,
           item.endDate,
           item.productDescription || '',

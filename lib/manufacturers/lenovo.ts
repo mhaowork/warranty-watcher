@@ -1,6 +1,5 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
-import { inferWarrantyStatus } from '../utils/warrantyUtils';
 import axios from 'axios';
 
 interface LenovoWarrantyResponse {
@@ -30,15 +29,11 @@ async function getMockLenovoWarrantyInfo(serialNumber: string): Promise<Warranty
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     
-    // Use the utility function to determine status
-    const status = inferWarrantyStatus(endDateStr);
-    
     return {
       serialNumber,
       manufacturer: Manufacturer.LENOVO,
       startDate: startDateStr,
       endDate: endDateStr,
-      status,
       productDescription: 'Lenovo ThinkPad X1 Carbon (mock data)',
       coverageDetails: [
         'Hardware Support',
@@ -53,20 +48,7 @@ async function getMockLenovoWarrantyInfo(serialNumber: string): Promise<Warranty
       manufacturer: Manufacturer.LENOVO,
       startDate: '',
       endDate: '',
-      status: 'unknown',
     };
-  }
-}
-
-// Map Lenovo API status to our WarrantyInfo status
-function mapLenovoStatus(status: string): 'active' | 'expired' | 'unknown' {
-  const lowerStatus = status.toLowerCase();
-  if (lowerStatus.includes('active') || lowerStatus === 'in warranty') {
-    return 'active';
-  } else if (lowerStatus.includes('expired') || lowerStatus === 'out of warranty') {
-    return 'expired';
-  } else {
-    return 'unknown';
   }
 }
 
@@ -93,21 +75,11 @@ async function fetchLenovoWarrantyData(
       throw new Error(`Invalid or empty response from Lenovo API for ${serialNumber}`);
     }
     
-    // Map the status from API to our warranty status format
-    // If can't map correctly, use our inferWarrantyStatus function
-    let status: 'active' | 'expired' | 'unknown';
-    if (data.status) {
-      status = mapLenovoStatus(data.status);
-    } else {
-      status = inferWarrantyStatus(data.end_date);
-    }
-    
     return {
       serialNumber,
       manufacturer: Manufacturer.LENOVO,
       startDate: data.start_date,
       endDate: data.end_date,
-      status,
       productDescription: data.product_name || 'Lenovo Product',
       coverageDetails: data.warranty_type ? [data.warranty_type] : []
     };

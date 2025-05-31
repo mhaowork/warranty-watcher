@@ -53,7 +53,6 @@ export async function lookupWarrantiesForDevices(
           manufacturer: device.manufacturer,
           startDate: '',
           endDate: '',
-          status: 'unknown',
           productDescription: device.model,
           skipped: true,
           error: true,
@@ -110,7 +109,6 @@ export async function lookupWarrantiesForDevices(
             manufacturer: device.manufacturer,
             startDate: '',
             endDate: '',
-            status: 'unknown',
             error: true,
             errorMessage: 'No result from batch API or error during fetch',
             fromCache: false,
@@ -139,7 +137,6 @@ export async function lookupWarrantiesForDevices(
           manufacturer: originalDevice.manufacturer,
           startDate: '',
           endDate: '',
-          status: 'unknown',
           productDescription: originalDevice.model,
           skipped: true, // Marked as skipped because it couldn't be processed
           error: true,

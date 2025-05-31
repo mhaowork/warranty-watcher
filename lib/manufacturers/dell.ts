@@ -1,6 +1,5 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
-import { inferWarrantyStatus } from '../utils/warrantyUtils';
 import axios from 'axios';
 
 // List of Service Level Codes not related to hardware warranties
@@ -138,9 +137,6 @@ async function fetchDellWarrantyData(
       validEntitlements.map(e => e.serviceLevelDescription)
     ));
     
-    // Determine warranty status
-    const status = inferWarrantyStatus(endDate);
-    
     // Use product description if available
     const productDescription = deviceInfo.systemDescription || 
                               deviceInfo.productLineDescription || 
@@ -151,7 +147,6 @@ async function fetchDellWarrantyData(
       manufacturer: Manufacturer.DELL,
       startDate,
       endDate,
-      status,
       productDescription,
       coverageDetails
     };
@@ -179,15 +174,11 @@ async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyIn
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     
-    // Use the utility function to determine status
-    const status = inferWarrantyStatus(endDateStr);
-    
     return {
       serialNumber,
       manufacturer: Manufacturer.DELL,
       startDate: startDateStr,
       endDate: endDateStr,
-      status,
       productDescription: 'Dell Latitude 5420 (mock data)',
       coverageDetails: [
         'Hardware Support',
@@ -201,7 +192,6 @@ async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyIn
       manufacturer: Manufacturer.DELL,
       startDate: '',
       endDate: '',
-      status: 'unknown',
     };
   }
 }

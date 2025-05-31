@@ -1,6 +1,5 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
-import { inferWarrantyStatus } from '../utils/warrantyUtils';
 import axios from 'axios';
 
 interface HpWarrantyResponse {
@@ -30,15 +29,11 @@ async function getMockHpWarrantyInfo(serialNumber: string): Promise<WarrantyInfo
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     
-    // Use the utility function to determine status
-    const status = inferWarrantyStatus(endDateStr);
-    
     return {
       serialNumber,
       manufacturer: Manufacturer.HP,
       startDate: startDateStr,
       endDate: endDateStr,
-      status,
       productDescription: 'HP EliteBook 840 G8 (mock data)',
       coverageDetails: [
         'Hardware Support',
@@ -53,20 +48,7 @@ async function getMockHpWarrantyInfo(serialNumber: string): Promise<WarrantyInfo
       manufacturer: Manufacturer.HP,
       startDate: '',
       endDate: '',
-      status: 'unknown',
     };
-  }
-}
-
-// Map HP API status to our WarrantyInfo status
-function mapHpStatus(status: string): 'active' | 'expired' | 'unknown' {
-  const lowerStatus = status.toLowerCase();
-  if (lowerStatus.includes('active') || lowerStatus === 'valid') {
-    return 'active';
-  } else if (lowerStatus.includes('expired') || lowerStatus === 'invalid') {
-    return 'expired';
-  } else {
-    return 'unknown';
   }
 }
 
@@ -93,21 +75,11 @@ async function fetchHpWarrantyData(
       throw new Error(`Invalid or empty response from HP API for ${serialNumber}`);
     }
     
-    // Map the status from API to our warranty status format
-    // If can't map correctly, use our inferWarrantyStatus function
-    let status: 'active' | 'expired' | 'unknown';
-    if (data.status) {
-      status = mapHpStatus(data.status);
-    } else {
-      status = inferWarrantyStatus(data.end_date);
-    }
-    
     return {
       serialNumber,
       manufacturer: Manufacturer.HP,
       startDate: data.start_date,
       endDate: data.end_date,
-      status,
       productDescription: data.product_name || 'HP Product',
       coverageDetails: data.warranty_type ? [data.warranty_type] : []
     };

@@ -5,7 +5,6 @@ export interface WarrantyInfo {
   manufacturer: Manufacturer;
   startDate: string;
   endDate: string;
-  status: 'active' | 'expired' | 'unknown';
   productDescription?: string;
   coverageDetails?: string[];
   
@@ -13,7 +12,7 @@ export interface WarrantyInfo {
   writtenBack?: boolean;    // Whether this info was written back to the source
   skipped?: boolean;        // Whether this device was skipped due to existing info
   error?: boolean;          // Whether there was an error processing this device
-  fromCache?: boolean;      // Whether this info was retrieved from local database cache
+  fromCache?: boolean;      // Whether this info was retrieved from local database
   lastUpdated?: string;     // ISO datetime when warranty was last fetched from API
   deviceSource?: string;    // Platform where device originally came from (CSV, Datto RMM, etc.)
   errorMessage?: string;    // For displaying specific error messages

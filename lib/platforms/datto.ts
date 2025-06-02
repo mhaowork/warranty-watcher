@@ -38,6 +38,7 @@ interface DattoDevice {
   hostname: string;
   deviceClass: string;
   warrantyDate?: string;
+  siteName?: string; // Client name for Datto RMM
 }
 
 interface DevicesPage {
@@ -362,6 +363,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           manufacturer: manufacturer,
           model: audit.systemInfo.model || '',
           hostname: device.hostname,
+          clientName: device.siteName,
           hasWarrantyInfo: hasWarrantyInfo,
           warrantyEndDate: warrantyEndDate
         };

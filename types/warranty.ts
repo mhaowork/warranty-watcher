@@ -2,6 +2,8 @@ import { Manufacturer } from './manufacturer';
 
 export interface WarrantyInfo {
   serialNumber: string;
+  hostname?: string;        // Device hostname/name
+  clientName?: string;      // Client/customer name
   manufacturer: Manufacturer;
   startDate: string;
   endDate: string;

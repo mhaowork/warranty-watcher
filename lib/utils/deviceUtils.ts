@@ -5,6 +5,8 @@ import { WarrantyInfo } from '@/types/warranty';
 export function deviceToWarrantyInfo(device: Device): WarrantyInfo {
   return {
     serialNumber: device.serialNumber,
+    clientName: device.clientName,
+    hostname: device.hostname,
     manufacturer: device.manufacturer,
     startDate: device.warrantyStartDate || '',
     endDate: device.warrantyEndDate || '',

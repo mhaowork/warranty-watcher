@@ -59,7 +59,8 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
         <TableCaption>Warranty information for {data.length} devices</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>Serial Number</TableHead>
+            <TableHead>Name & Serial</TableHead>
+            <TableHead>Client Name</TableHead>
             <TableHead>Manufacturer</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Start Date</TableHead>
@@ -74,7 +75,13 @@ export default function WarrantyResults({ data }: WarrantyResultsProps) {
         <TableBody>
           {data.map((item, index) => (
             <TableRow key={index}>
-              <TableCell className="font-medium">{item.serialNumber}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex flex-col">
+                  <span className="font-semibold">{item.hostname || 'Unknown Device'}</span>
+                  <span className="text-xs text-gray-500">{item.serialNumber}</span>
+                </div>
+              </TableCell>
+              <TableCell>{item.clientName || 'Unknown Client'}</TableCell>
               <TableCell>{item.manufacturer}</TableCell>
               <TableCell>
                 <span 

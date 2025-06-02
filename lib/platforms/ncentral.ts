@@ -27,6 +27,7 @@ interface DeviceAsset {
       deleted: string;
       deviceid: string;
       deviceclass: string;
+      longname: string;
     };
     _links?: Record<string, unknown>;
   };
@@ -320,9 +321,9 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
               serialNumber: assetData.data.computersystem?.serialnumber || '',
               manufacturer: manufacturer,
               model: assetData.data.computersystem?.model || '',
-              hostname: assetData.data.computersystem?.netbiosname || device.hostname as string || '',
-              clientId: assetData.data._extra?.customer?.customerid || device.clientId as string || '',
-              clientName: assetData.data._extra?.customer?.customername || device.clientName as string || '',
+              hostname: assetData.data.device?.longname || assetData.data.computersystem?.netbiosname || '',
+              clientId: assetData.data._extra?.customer?.customerid || '',
+              clientName: assetData.data._extra?.customer?.customername || '',
               deviceClass: assetData.data.device?.deviceclass || ''
             };
             

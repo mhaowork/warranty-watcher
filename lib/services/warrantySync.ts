@@ -143,9 +143,9 @@ export async function fetchAndStoreDeviceWarranty(
   device: Device,
   manufacturerCredentials: ManufacturerCredentials
 ): Promise<WarrantyInfo> {
+  const warrantyInfo = deviceToWarrantyInfo(device);
   if (!device.serialNumber) {
     console.warn(`Skipping device ID ${device.id} - no serial number.`);
-    const warrantyInfo = deviceToWarrantyInfo(device);
     warrantyInfo.error = true;
     warrantyInfo.errorMessage = 'Missing serial number';
     warrantyInfo.skipped = true;
@@ -153,58 +153,52 @@ export async function fetchAndStoreDeviceWarranty(
   }
 
   console.log(`Fetching warranty from external API for ${device.serialNumber}`);
+  // TODO: fix the type def for warrantyDates (it should not be WarrantyInfo)
   try {
     // Use manufacturer-specific API implementations
     if (device.manufacturer === Manufacturer.DELL) {
       const dellCredentials = manufacturerCredentials[Manufacturer.DELL];
-      const warrantyData = await getDellWarrantyInfo(
+      const warrantyDates = await getDellWarrantyInfo(
         device.serialNumber,
         dellCredentials?.clientId,
         dellCredentials?.clientSecret
       );
       
       // Store the warranty data in database
-      await storeWarrantyInfo(device.serialNumber, warrantyData);
-      
-      return {
-        ...warrantyData,
-        deviceSource: device.sourcePlatform
-      };
+      await storeWarrantyInfo(device.serialNumber, warrantyDates);
+      warrantyInfo.startDate = warrantyDates.startDate;
+      warrantyInfo.endDate = warrantyDates.endDate;
+      return warrantyInfo;
     } else if (device.manufacturer === Manufacturer.HP) {
       const hpCredentials = manufacturerCredentials[Manufacturer.HP];
-      const warrantyData = await getHpWarrantyInfo(
+      const warrantyDates = await getHpWarrantyInfo(
         device.serialNumber,
         hpCredentials?.apiKey
       );
       
       // Store the warranty data in database
-      await storeWarrantyInfo(device.serialNumber, warrantyData);
-      
-      return {
-        ...warrantyData,
-        deviceSource: device.sourcePlatform
-      };
+      await storeWarrantyInfo(device.serialNumber, warrantyDates);
+      warrantyInfo.startDate = warrantyDates.startDate;
+      warrantyInfo.endDate = warrantyDates.endDate;
+      return warrantyInfo;
     } else if (device.manufacturer === Manufacturer.LENOVO) {
       const lenovoCredentials = manufacturerCredentials[Manufacturer.LENOVO];
-      const warrantyData = await getLenovoWarrantyInfo(
+      const warrantyDates = await getLenovoWarrantyInfo(
         device.serialNumber,
         lenovoCredentials?.apiKey
       );
       
       // Store the warranty data in database
-      await storeWarrantyInfo(device.serialNumber, warrantyData);
-      
-      return {
-        ...warrantyData,
-        deviceSource: device.sourcePlatform
-      };
+      await storeWarrantyInfo(device.serialNumber, warrantyDates);
+      warrantyInfo.startDate = warrantyDates.startDate;
+      warrantyInfo.endDate = warrantyDates.endDate;
+      return warrantyInfo;
     } else {
       throw new Error(`Unsupported manufacturer or invalid/missing credentials for ${device.manufacturer}`);
     }
 
   } catch (error) {
     console.error(`Error fetching warranty for ${device.serialNumber} from external API:`, error);
-    const warrantyInfo = deviceToWarrantyInfo(device);
     warrantyInfo.error = true;
     warrantyInfo.errorMessage = error instanceof Error ? error.message : 'API fetch failed';
     return warrantyInfo;

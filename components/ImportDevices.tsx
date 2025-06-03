@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Platform } from '@/types/platform';
 import { getPlatformCredentials } from '@/lib/storage';
@@ -15,22 +15,11 @@ import PlatformCredentialStatus from './PlatformCredentialStatus';
 export default function ImportDevices() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const configuredPlatforms = [Platform.DATTO_RMM, Platform.NCENTRAL, Platform.CSV];
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(Platform.DATTO_RMM);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
-  const [configuredPlatforms, setConfiguredPlatforms] = useState<Platform[]>([]);
   const router = useRouter();
   
-  useEffect(() => {
-    const configured: Platform[] = [];
-    configured.push(Platform.DATTO_RMM);
-    configured.push(Platform.NCENTRAL);
-    configured.push(Platform.CSV);
-    setConfiguredPlatforms(configured);
-    if (configured.length > 0 && configured[0] !== Platform.CSV) {
-      setSelectedPlatform(configured[0]);
-    }
-  }, []);
-
   const handlePlatformChange = (value: string) => {
     setSelectedPlatform(value as Platform);
   };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Platform } from '@/types/platform';
 import { Device } from '@/types/device';
@@ -66,14 +66,6 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   function handleClientChange(clientName: string) {
     setSelectedClient(clientName === 'all' ? '' : clientName);
   }
-
-  useEffect(() => {
-    // Only reset results to device data if we're not in the middle of an operation
-    // and don't have fresh lookup results
-    if (!isLoading && !currentAction) {
-      setResults(devices.map(deviceToWarrantyInfo));
-    }
-  }, [devices, isLoading, currentAction]);
 
   async function lookupAllWarranties() {
     if (!filteredDevices.length) {
@@ -197,7 +189,6 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     
     setResults([...updatedResults]); // Final update
     setIsLoading(false);
-    setCurrentAction(null);
     setProgress(100);
     alert(`Write-back process completed for ${itemsToWriteBack.length} eligible devices. Check results for details.`);
     router.refresh(); // Refresh data from server to get latest db state

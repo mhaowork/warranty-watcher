@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Users, Grid3X3 } from 'lucide-react';
@@ -24,12 +24,7 @@ export default function ClientSelector({
 }: ClientSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedClient, setSelectedClient] = useState<string>(currentClient || '');
-
-  useEffect(() => {
-    // Update selected client when currentClient prop changes
-    setSelectedClient(currentClient || '');
-  }, [currentClient]);
+  const [selectedClient, setSelectedClient] = useState<string>('');
 
   function handleClientChange(value: string) {
     setSelectedClient(value);
@@ -76,7 +71,7 @@ export default function ClientSelector({
         Client:
       </div>
       
-      <Select value={selectedClient} onValueChange={handleClientChange}>
+      <Select value={currentClient ?? selectedClient} onValueChange={handleClientChange}>
         <SelectTrigger className="w-80">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>

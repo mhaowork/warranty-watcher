@@ -11,6 +11,7 @@ interface ClientSelectorProps {
   currentClient?: string;
   placeholder?: string;
   showAllOption?: boolean;
+  onClientChange?: (clientName: string) => void;
 }
 
 export default function ClientSelector({ 
@@ -18,7 +19,8 @@ export default function ClientSelector({
   clientCounts,
   currentClient,
   placeholder = "Select a client...",
-  showAllOption = true
+  showAllOption = true,
+  onClientChange
 }: ClientSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,7 +34,13 @@ export default function ClientSelector({
   function handleClientChange(value: string) {
     setSelectedClient(value);
     
-    // Update URL search params
+    // If onClientChange callback is provided, use it instead of URL navigation
+    if (onClientChange) {
+      onClientChange(value);
+      return;
+    }
+    
+    // Otherwise, use URL search params (for pages like reports)
     const params = new URLSearchParams(searchParams.toString());
     
     if (value === 'all' || value === '') {

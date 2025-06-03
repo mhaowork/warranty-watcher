@@ -6,7 +6,7 @@ import { Platform } from '@/types/platform';
 import { getPlatformCredentials } from '@/lib/storage';
 import { parseCSVData } from '@/lib/platforms/csv';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -116,10 +116,7 @@ export default function ImportDevices() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Import Devices</CardTitle>
-        <CardDescription>
-          Import devices from RMM platforms or CSV files to build your device pool.
-        </CardDescription>
+        <CardTitle className='text-xl font-bold'>Import Devices</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="platform">

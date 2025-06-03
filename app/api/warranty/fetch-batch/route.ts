@@ -41,17 +41,11 @@ export async function POST(request: NextRequest) {
         // Ensure device has a serial number before attempting to fetch warranty
         if (!device.serialNumber) {
           console.warn(`Skipping device ID ${device.id || 'N/A'} due to missing serial number.`);
-          results.push({
-            serialNumber: device.serialNumber || 'N/A',
-            manufacturer: device.manufacturer,
-            startDate: '',
-            endDate: '',
-            error: true,
-            errorMessage: 'Missing serial number',
-            fromCache: false, // It wasn't looked up
-            deviceSource: device.sourcePlatform,
-            skipped: true,
-          });
+          const warrantyInfo = deviceToWarrantyInfo(device);
+          warrantyInfo.error = true;
+          warrantyInfo.errorMessage = 'Missing serial number';
+          warrantyInfo.skipped = true;
+          results.push(warrantyInfo);
           continue;
         }
 
@@ -69,16 +63,11 @@ export async function POST(request: NextRequest) {
         results.push(warrantyInfo);
       } catch (e) {
         console.error(`Critical error processing device ${device.serialNumber} in batch:`, e);
-        results.push({
-          serialNumber: device.serialNumber,
-          manufacturer: device.manufacturer,
-          startDate: '',
-          endDate: '',
-          error: true,
-          errorMessage: e instanceof Error ? e.message : 'Batch processing failed catastrophically for this device',
-          fromCache: false,
-          deviceSource: device.sourcePlatform
-        });
+        const warrantyInfo = deviceToWarrantyInfo(device);
+        warrantyInfo.error = true;
+        warrantyInfo.errorMessage = e instanceof Error ? e.message : 'Batch processing failed catastrophically for this device';
+        warrantyInfo.skipped = true;
+        results.push(warrantyInfo);
       }
     }
 

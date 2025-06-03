@@ -48,9 +48,9 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
       <div className="space-y-4">
         {/* Summary Section */}
         {!selectedClient && uniqueClients.length > 1 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-900 mb-2">Multi-Client Data Summary</h3>
-            <p className="text-blue-700 text-sm">
+          <div className="bg-muted border border-border rounded-lg p-4">
+            <h3 className="font-semibold text-foreground mb-2">Multi-Client Data Summary</h3>
+            <p className="text-muted-foreground text-sm">
               Showing data for {uniqueClients.length} clients: {uniqueClients.slice(0, 3).join(', ')}
               {uniqueClients.length > 3 && ` and ${uniqueClients.length - 3} more`}
             </p>

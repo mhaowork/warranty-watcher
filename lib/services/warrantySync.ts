@@ -12,6 +12,7 @@ import {
   updateDeviceWarranty,
   markWarrantyWrittenBack,
 } from '../database';
+import { deviceToWarrantyInfo } from '../utils/deviceUtils';
 
 export interface SyncOptions {
   writeBackToSource: boolean;
@@ -144,16 +145,11 @@ export async function fetchAndStoreDeviceWarranty(
 ): Promise<WarrantyInfo> {
   if (!device.serialNumber) {
     console.warn(`Skipping device ID ${device.id} - no serial number.`);
-    return {
-      serialNumber: device.serialNumber || 'N/A',
-      manufacturer: device.manufacturer,
-      startDate: '',
-      endDate: '',
-      error: true,
-      errorMessage: 'Missing serial number',
-      fromCache: false,
-      deviceSource: device.sourcePlatform
-    };
+    const warrantyInfo = deviceToWarrantyInfo(device);
+    warrantyInfo.error = true;
+    warrantyInfo.errorMessage = 'Missing serial number';
+    warrantyInfo.skipped = true;
+    return warrantyInfo;
   }
 
   console.log(`Fetching warranty from external API for ${device.serialNumber}`);
@@ -208,14 +204,9 @@ export async function fetchAndStoreDeviceWarranty(
 
   } catch (error) {
     console.error(`Error fetching warranty for ${device.serialNumber} from external API:`, error);
-    return {
-      serialNumber: device.serialNumber,
-      manufacturer: device.manufacturer,
-      startDate: '',
-      endDate: '',
-      error: true,
-      errorMessage: error instanceof Error ? error.message : 'API fetch failed',
-      deviceSource: device.sourcePlatform
-    };
+    const warrantyInfo = deviceToWarrantyInfo(device);
+    warrantyInfo.error = true;
+    warrantyInfo.errorMessage = error instanceof Error ? error.message : 'API fetch failed';
+    return warrantyInfo;
   }
 }

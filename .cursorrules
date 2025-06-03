@@ -23,6 +23,9 @@
   
   UI and Styling
   - Use Shadcn UI, Radix, and Tailwind for components and styling.
+    - ✅ USE: bg-muted, text-foreground, bg-primary, text-muted-foreground, border, bg-background etc
+    - ❌ AVOID: bg-gray-500, text-zinc-600, border-slate-200, bg-white, text-black etc
+    - Always prefer semantic color tokens over specific utilities.
   - Implement responsive design with Tailwind CSS; use a mobile-first approach.
   
   Performance Optimization

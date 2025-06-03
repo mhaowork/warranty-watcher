@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Platform } from '@/types/platform';
 import { Device } from '@/types/device';
@@ -9,10 +9,11 @@ import { getPlatformCredentials } from '@/lib/storage';
 import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 import { lookupWarrantiesForDevices } from '@/lib/services/warrantyLookup';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import WarrantyResults from './WarrantyResults';
+import ClientSelector from './ClientSelector';
 import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
 
 interface SyncWarrantiesProps {
@@ -27,8 +28,45 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   );
   const [skipExistingForLookup, setSkipExistingForLookup] = useState<boolean>(true);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<string>('');
   const router = useRouter();
   
+  // Calculate client data from devices
+  const clientData = useMemo(() => {
+    const clientNames = Array.from(new Set(
+      devices
+        .map(device => device.clientName)
+        .filter((name): name is string => Boolean(name))
+    )).sort();
+    
+    const clientCounts = clientNames.map(clientName => ({
+      clientName,
+      count: devices.filter(device => device.clientName === clientName).length
+    }));
+    
+    return { clientNames, clientCounts };
+  }, [devices]);
+  
+  // Filter devices and results based on selected client
+  const filteredDevices = useMemo(() => {
+    if (!selectedClient || selectedClient === 'all') {
+      return devices;
+    }
+    return devices.filter(device => device.clientName === selectedClient);
+  }, [devices, selectedClient]);
+  
+  const filteredResults = useMemo(() => {
+    if (!selectedClient || selectedClient === 'all') {
+      return results;
+    }
+    return results.filter(result => result.clientName === selectedClient);
+  }, [results, selectedClient]);
+  
+  // Handle client selection change
+  function handleClientChange(clientName: string) {
+    setSelectedClient(clientName === 'all' ? '' : clientName);
+  }
+
   useEffect(() => {
     // Only reset results to device data if we're not in the middle of an operation
     // and don't have fresh lookup results
@@ -38,8 +76,8 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   }, [devices, isLoading, currentAction]);
 
   async function lookupAllWarranties() {
-    if (!devices.length) {
-      alert('No devices in the database to process for warranty lookup.');
+    if (!filteredDevices.length) {
+      alert('No devices in the selected scope to process for warranty lookup.');
       return;
     }
 
@@ -51,7 +89,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     setResults(initialResults);
 
     try {
-      const result = await lookupWarrantiesForDevices(devices, {
+      const result = await lookupWarrantiesForDevices(filteredDevices, {
         skipExistingForLookup,
         onProgress: setProgress
       });
@@ -60,7 +98,13 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         throw new Error(result.error || 'Warranty lookup failed');
       }
 
-      setResults(result.results);
+      // Merge the new results with existing results for non-filtered devices
+      const updatedResults = devices.map(device => {
+        const newResult = result.results.find(r => r.serialNumber === device.serialNumber);
+        return newResult || deviceToWarrantyInfo(device);
+      });
+      
+      setResults(updatedResults);
       // Note: Removed router.refresh() to preserve API results
     } catch (error) {
       console.error('Warranty lookup failed:', error);
@@ -160,56 +204,87 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   }
   
   function exportToCSV() {
-    if (!results.length) {
+    if (!filteredResults.length) {
       alert('No results to export');
       return;
     }
     
     const csvContent = 
       "data:text/csv;charset=utf-8," + 
-      "Serial Number,Manufacturer,Status,Start Date,End Date,Product Description,Written Back,Skipped,Error,Error Message,Last Updated,Device Source\n" + 
-      results.map(item => 
-        [
+      "Device Name,Serial Number,Client Name,Manufacturer,Status,Start Date,End Date,Product,Source,Last Updated,Error Status,Write Back\n" + 
+      filteredResults.map(item => {
+        // Format error status
+        let errorStatus = 'Success';
+        if (item.error) {
+          errorStatus = item.errorMessage ? `Error: ${item.errorMessage}` : 'Error';
+        } else if (!item.error && !item.errorMessage) {
+          errorStatus = 'None';
+        }
+        
+        // Format write back status
+        let writeBackStatus = 'Not Written';
+        if (item.skipped) {
+          writeBackStatus = 'Skipped';
+        } else if (item.writtenBack) {
+          writeBackStatus = 'Success';
+        }
+        
+        return [
+          item.hostname || 'Unknown Device',
           item.serialNumber,
+          item.clientName,
           item.manufacturer,
           inferWarrantyStatus(item.endDate),
           item.startDate,
           item.endDate,
-          item.productDescription || '',
-          item.writtenBack ? 'Yes' : 'No',
-          item.skipped ? 'Yes' : 'No',
-          item.error ? 'Yes' : 'No',
-          item.errorMessage || '',
-          item.lastUpdated || '',
-          item.deviceSource || ''
-        ].map(field => String(field || '').replace(/,/g, ' ')).join(",") // Replace commas with spaces to prevent CSV issues
-      ).join("\n");
+          item.productDescription,
+          item.deviceSource,
+          item.lastUpdated,
+          errorStatus,
+          writeBackStatus
+        ].map(field => String(field || '').replace(/,/g, ' ')).join(","); // Replace commas with spaces to prevent CSV issues
+      }).join("\n");
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
+    const filename = selectedClient && selectedClient !== 'all' 
+      ? `warranty_report_${selectedClient}_${new Date().toISOString().split('T')[0]}.csv`
+      : `warranty_report_${new Date().toISOString().split('T')[0]}.csv`;
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `warranty_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   }
 
-  const devicesInPoolCount = devices.length;
-  const resultsCount = results.length;
-  const canWriteBack = results.some(r => !r.error && !r.skipped && !r.fromCache && !r.writtenBack && r.serialNumber && r.endDate);
+  const devicesInPoolCount = filteredDevices.length;
+  const resultsCount = filteredResults.length;
+  const canWriteBack = filteredResults.some(r => !r.error && r.serialNumber && r.endDate);
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Warranty Sync</CardTitle>
-        <CardDescription>
-          Look up warranty information and write it back to source platforms.
-        </CardDescription>
+        <CardTitle className='text-xl font-bold'>Device Pool</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
+          {/* Client Filter */}
+          {clientData.clientNames.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Filter by Client</h3>
+              <ClientSelector 
+                clients={clientData.clientNames}
+                clientCounts={clientData.clientCounts}
+                currentClient={selectedClient}
+                placeholder="Select a client..."
+                showAllOption={true}
+                onClientChange={handleClientChange}
+              />
+            </div>
+          )}
+          
           <div>
-            <h3 className="text-xl font-semibold mb-2">Device Pool Actions</h3>
+            <h3 className="text-lg font-semibold mb-2">Device Pool Actions</h3>
             <div className="space-y-4">
               <div>
                 <div className="flex items-center space-x-2 mb-2">
@@ -231,7 +306,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
                   size="lg"
                   className="w-full md:w-auto"
                 >
-                  {isLoading && currentAction === 'lookup' ? 'Looking up Warranties...' : `Lookup All Warranties (${devicesInPoolCount} in pool)`}
+                  {isLoading && currentAction === 'lookup' ? 'Looking up Warranties...' : `Lookup ${selectedClient && selectedClient !== 'all' ? `${selectedClient} ` : ''}Warranties (${devicesInPoolCount} in scope)`}
                 </Button>
               </div>
               
@@ -271,10 +346,12 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         {resultsCount > 0 && (
           <div className="mt-8">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Warranty Results ({resultsCount} devices)</h3>
+              <h3 className="text-lg font-semibold">
+                Warranty Results ({resultsCount} device{resultsCount !== 1 ? 's' : ''}{selectedClient && selectedClient !== 'all' ? ` for ${selectedClient}` : ''})
+              </h3>
               <Button onClick={exportToCSV} variant="outline" disabled={isLoading}>Export to CSV</Button>
             </div>
-            <WarrantyResults data={results} />
+            <WarrantyResults data={filteredResults} selectedClient={selectedClient} />
           </div>
         )}
       </CardContent>

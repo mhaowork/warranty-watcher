@@ -20,13 +20,21 @@ interface ReportParams {
 export default async function LifecycleReportPage({ searchParams }: ReportParams) {
   const { client } = await searchParams;
   
-  // Generate dates on server side to avoid hydration mismatch
+  // TODO: use dateUtils to make these dates
   const reportDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
-  const reportTimestamp = new Date().toLocaleString('en-US');
+  const reportTimestamp = new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+    timeZoneName: 'short'
+  });
   
   // Load client information and devices from database
   let devices: Device[] = [];

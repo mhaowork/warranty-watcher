@@ -53,6 +53,7 @@ View Example Report: [Example Report](public/warranty-watcher-example-report-202
 docker run -p 3000:3000 -v ./data:/app/data -e DB_PATH=/app/data/warranty.db mhaowork/warrantywatcher:latest
 ```
 Note: your device database will be saved in the `data` folder under your current directory
+
 Access the application at [http://localhost:3000](http://localhost:3000).
 
 #### Option 2: Build from Source

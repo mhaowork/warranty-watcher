@@ -6,6 +6,8 @@ A warranty information management system that bridges the gap between IT managem
 
 Demo: https://demo.warrantywatcher.com/
 
+View Example Report: [Example Report](public/warranty-watcher-example-report-2025-06-03.pdf)
+
 
 ## Features
 
@@ -14,7 +16,7 @@ Demo: https://demo.warrantywatcher.com/
 - **Local Database:** Device information is stored in a local SQLite database for persistence and performance
 - **Local API Credential Storage:** Configuration is stored in the browser's local storage for privacy
 - **CSV Import:** Import device information via CSV file
-- **Reporting:** 🚧 Generate and export warranty status reports🚧 (Work-in-progress)
+- **Reporting:** Generate and export warranty status reports
 
 ## Supported Platforms
 

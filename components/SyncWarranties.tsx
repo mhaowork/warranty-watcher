@@ -67,7 +67,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     setSelectedClient(clientName === 'all' ? '' : clientName);
   }
 
-  async function lookupAllWarranties() {
+  async function lookupWarranties() {
     if (!filteredDevices.length) {
       alert('No devices in the selected scope to process for warranty lookup.');
       return;
@@ -252,6 +252,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   const resultsCount = filteredResults.length;
   const canWriteBack = filteredResults.some(r => !r.error && r.serialNumber && r.endDate);
 
+  // TODO: add a warning if getManufacturerCredentials is not complete
   return (
     <Card className="w-full">
       <CardHeader>
@@ -292,7 +293,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
                   </Label>
                 </div>
                 <Button 
-                  onClick={lookupAllWarranties} 
+                  onClick={lookupWarranties} 
                   disabled={isLoading || devicesInPoolCount === 0}
                   size="lg"
                   className="w-full md:w-auto"

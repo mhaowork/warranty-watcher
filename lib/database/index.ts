@@ -57,7 +57,8 @@ function initializeDatabase(): Promise<sqlite3.Database> {
       const createIndexesSQL = [
         'CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number);',
         'CREATE INDEX IF NOT EXISTS idx_devices_platform ON devices(source_platform);',
-        'CREATE INDEX IF NOT EXISTS idx_devices_warranty_fetched ON devices(warranty_fetched_at);'
+        'CREATE INDEX IF NOT EXISTS idx_devices_warranty_fetched ON devices(warranty_fetched_at);',
+        'CREATE INDEX IF NOT EXISTS idx_devices_client_name ON devices(client_name);'
       ];
 
       db.serialize(() => {
@@ -344,4 +345,38 @@ export async function closeDatabase(): Promise<void> {
 // Export database instance for advanced usage (initialize first)
 export async function getDatabase(): Promise<sqlite3.Database> {
   return await initializeDatabase();
+}
+
+// Multi-tenant functions for client-specific operations
+export async function getUniqueClientNames(): Promise<string[]> {
+  const query = `
+    SELECT DISTINCT client_name 
+    FROM devices 
+    WHERE client_name IS NOT NULL 
+    AND client_name != '' 
+    ORDER BY client_name ASC
+  `;
+  
+  const rows = await runQuery<{ client_name: string }>(query);
+  return rows.map(row => row.client_name);
+}
+
+export async function getDevicesByClientName(clientName: string): Promise<Device[]> {
+  const query = 'SELECT * FROM devices WHERE client_name = ? ORDER BY updated_at DESC';
+  const rows = await runQuery<DeviceRow>(query, [clientName]);
+  return rows.map(mapRowToDevice);
+}
+
+export async function getDeviceCountByClient(): Promise<{ clientName: string; count: number }[]> {
+  const query = `
+    SELECT client_name, COUNT(*) as count
+    FROM devices 
+    WHERE client_name IS NOT NULL 
+    AND client_name != ''
+    GROUP BY client_name 
+    ORDER BY count DESC, client_name ASC
+  `;
+  
+  const rows = await runQuery<{ client_name: string; count: number }>(query);
+  return rows.map(row => ({ clientName: row.client_name, count: row.count }));
 } 

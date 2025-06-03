@@ -41,12 +41,11 @@ export default function RootLayout({
                       <Button variant="ghost">Sync</Button>
                     </Link>
                   </li>
-                  {/* TODO: Add reports back in when it's ready */}
-                  {/* <li>
+                  <li>
                     <Link href="/reports/lifecycle">
                       <Button variant="ghost">Reports</Button>
                     </Link>
-                  </li> */}
+                  </li>
                 </ul>
               </nav>
             </div>

@@ -2,32 +2,15 @@
 
 import { WarrantyInfo } from '@/types/warranty';
 import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
+import { formatWarrantyDate } from '@/lib/utils/dateUtils';
 import { CheckCircle, XCircle, AlertTriangle, Calendar, Shield, Building } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface LifecycleReportProps {
   data: WarrantyInfo[];
   clientName?: string;
-  format?: 'html' | 'print';
   reportDate: string;
   reportTimestamp: string;
-}
-
-function formatDate(dateString?: string): string {
-  if (!dateString) return 'N/A';
-  
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid';
-    
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  } catch {
-    return 'Invalid';
-  }
 }
 
 function getStatusBadge(endDate?: string) {
@@ -90,6 +73,40 @@ function WarrantyPieChart({ stats }: { stats: { active: number; expired: number;
 
   if (total === 0) return null;
 
+  // Special case: if only one category, show a full circle
+  if (data.length === 1) {
+    const singleItem = data[0];
+    return (
+      <div className="flex items-center justify-center">
+        <div className="relative">
+          <svg width="200" height="200" className="print:w-64 print:h-64">
+            <circle
+              cx={centerX}
+              cy={centerY}
+              r={radius}
+              fill={singleItem.color}
+              stroke="white"
+              strokeWidth="2"
+            />
+          </svg>
+          
+          {/* Legend */}
+          <div className="absolute left-full ml-4 top-1/2 transform -translate-y-1/2 space-y-2 print:ml-6 print:space-y-3">
+            <div className="flex items-center text-sm print:text-base">
+              <div 
+                className="w-3 h-3 print:w-4 print:h-4 rounded-full mr-2" 
+                style={{ backgroundColor: singleItem.color }}
+              />
+              <span className="text-gray-700 print:text-gray-900 print:font-medium">
+                {singleItem.name}: {singleItem.value} (100%)
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   let cumulativePercentage = 0;
 
   return (
@@ -101,22 +118,24 @@ function WarrantyPieChart({ stats }: { stats: { active: number; expired: number;
             const startAngle = cumulativePercentage * 360;
             const endAngle = (cumulativePercentage + percentage) * 360;
             
-            const currentRadius = radius;
-            
             const startAngleRad = (startAngle * Math.PI) / 180;
-            const endAngleRad = (endAngle * Math.PI) / 180;
             
-            const x1 = centerX + currentRadius * Math.cos(startAngleRad);
-            const y1 = centerY + currentRadius * Math.sin(startAngleRad);
-            const x2 = centerX + currentRadius * Math.cos(endAngleRad);
-            const y2 = centerY + currentRadius * Math.sin(endAngleRad);
+            const x1 = centerX + radius * Math.cos(startAngleRad);
+            const y1 = centerY + radius * Math.sin(startAngleRad);
             
+            // Use large arc flag when the arc is greater than 180 degrees
             const largeArcFlag = percentage > 0.5 ? 1 : 0;
+            
+            // Handle edge case where percentage is very close to 1 (but not exactly 1)
+            const adjustedEndAngle = percentage >= 0.999 ? startAngle + 359.9 : endAngle;
+            const adjustedEndAngleRad = (adjustedEndAngle * Math.PI) / 180;
+            const adjustedX2 = centerX + radius * Math.cos(adjustedEndAngleRad);
+            const adjustedY2 = centerY + radius * Math.sin(adjustedEndAngleRad);
             
             const pathData = [
               `M ${centerX} ${centerY}`,
               `L ${x1} ${y1}`,
-              `A ${currentRadius} ${currentRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+              `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${adjustedX2} ${adjustedY2}`,
               'Z'
             ].join(' ');
             
@@ -529,7 +548,7 @@ export default function LifecycleReport({ data, clientName, reportDate, reportTi
                     <span className="text-gray-600 ml-2">({device.manufacturer})</span>
                   </div>
                   <div className="text-orange-600 font-medium print:text-xs">
-                    {formatDate(device.endDate)}
+                    {formatWarrantyDate(device.endDate)}
                   </div>
                 </div>
               ))}
@@ -586,10 +605,10 @@ export default function LifecycleReport({ data, clientName, reportDate, reportTi
                         {getStatusBadge(item.endDate)}
                       </td>
                       <td className="px-3 py-2 print:px-1 print:py-1 text-xs text-gray-700 border-b">
-                        {formatDate(item.startDate)}
+                        {formatWarrantyDate(item.startDate)}
                       </td>
                       <td className="px-3 py-2 print:px-1 print:py-1 text-xs text-gray-700 border-b">
-                        {formatDate(item.endDate)}
+                        {formatWarrantyDate(item.endDate)}
                       </td>
                     </tr>
                   ))}

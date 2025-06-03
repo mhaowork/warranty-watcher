@@ -177,11 +177,12 @@ function getWarrantyHealthScore(data: WarrantyInfo[]) {
   
   const stats = getWarrantyStats(data);
   const expiringDevices = getExpiringInNext90Days(data);
+  const activeButNotExpiring = stats.active - expiringDevices.length;
   
   // Calculate weighted score (0-100)
-  // Active: 100 points, Expiring: 60 points, Unknown: 30 points, Expired: 0 points
+  // Active (not expiring soon): 100 points, Expiring: 60 points, Unknown: 30 points, Expired: 0 points
   const score = Math.round(
-    (stats.active * 100 + expiringDevices.length * 60 + stats.unknown * 30 + stats.expired * 0) / stats.total
+    (activeButNotExpiring * 100 + expiringDevices.length * 60 + stats.unknown * 30 + stats.expired * 0) / stats.total
   );
   
   // Determine grade and color

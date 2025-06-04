@@ -71,7 +71,7 @@ export default async function LifecycleReportPage({ searchParams }: ReportParams
   return (
     <div className="container mx-auto py-8 px-4">
       {/* Client Selector and Summary */}
-      <div className="mb-6">
+      <div className="mb-6 print:hidden">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
           <ClientSelector 
             clients={clients}

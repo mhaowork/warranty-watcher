@@ -1,0 +1,83 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]  # Trigger on version tags like v1.0.0
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'types/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'next.config.ts'
+      - 'tsconfig.json'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extract package version
+      id: package-version
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Package version: $VERSION"
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: mhaowork/warrantywatcher
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=${{ steps.package-version.outputs.version }}
+          type=sha,prefix={{branch}}-
+        labels: |
+          org.opencontainers.image.title=WarrantyWatcher
+          org.opencontainers.image.description=Warranty tracking and management system
+          org.opencontainers.image.version=${{ steps.package-version.outputs.version }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Update deployment image
+      run: |
+        echo "🐳 Docker image built and pushed successfully!"
+        echo "📦 Available tags:"
+        echo "${{ steps.meta.outputs.tags }}"
+        echo ""
+        echo "🚀 Users can now pull with:"
+        echo "docker pull mhaowork/warrantywatcher:latest"
+        echo "docker pull mhaowork/warrantywatcher:${{ steps.package-version.outputs.version }}" 

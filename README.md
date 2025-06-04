@@ -14,7 +14,7 @@ View Example Report: [Example Report](public/warranty-watcher-example-report-202
 - **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information
 - **Manufacturer API Integration:** Query multiple manufacturer warranty APIs to determine warranty status
 - **Local Database:** Device information is stored in a local SQLite database for persistence and performance
-- **Local API Credential Storage:** Configuration is stored in the browser's local storage for privacy
+- **Local API Credential Storage:** Configuration is stored in each user's browser local storage for privacy.
 - **CSV Import:** Import device information via CSV file
 - **Reporting:** Generate and export warranty status reports
 

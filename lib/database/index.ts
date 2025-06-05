@@ -1,3 +1,5 @@
+'use server';
+
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -147,7 +149,7 @@ function runQuery<T = unknown>(
   });
 }
 
-function runStatement(
+async function runStatement(
   query: string,
   params: unknown[] = []
 ): Promise<{ changes: number; lastID: number }> {
@@ -379,4 +381,10 @@ export async function getDeviceCountByClient(): Promise<{ clientName: string; co
   
   const rows = await runQuery<{ client_name: string; count: number }>(query);
   return rows.map(row => ({ clientName: row.client_name, count: row.count }));
+}
+
+
+export async function deleteDeviceById(deviceId: string): Promise<void> {
+  const query = `DELETE FROM devices WHERE id = ?`;
+  await runStatement(query, [deviceId]);
 } 

@@ -8,6 +8,7 @@ import { WarrantyInfo } from '@/types/warranty';
 import { getPlatformCredentials } from '@/lib/storage';
 import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 import { lookupWarrantiesForDevices } from '@/lib/services/warrantyLookup';
+import { deleteDeviceById } from '@/lib/database';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';
@@ -30,7 +31,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>('');
   const router = useRouter();
-  
+
   // Calculate client data from devices
   const clientData = useMemo(() => {
     const clientNames = Array.from(new Set(
@@ -38,15 +39,15 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         .map(device => device.clientName)
         .filter((name): name is string => Boolean(name))
     )).sort();
-    
+
     const clientCounts = clientNames.map(clientName => ({
       clientName,
       count: devices.filter(device => device.clientName === clientName).length
     }));
-    
+
     return { clientNames, clientCounts };
   }, [devices]);
-  
+
   // Filter devices and results based on selected client
   const filteredDevices = useMemo(() => {
     if (!selectedClient || selectedClient === 'all') {
@@ -54,17 +55,100 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     }
     return devices.filter(device => device.clientName === selectedClient);
   }, [devices, selectedClient]);
-  
+
   const filteredResults = useMemo(() => {
     if (!selectedClient || selectedClient === 'all') {
       return results;
     }
     return results.filter(result => result.clientName === selectedClient);
   }, [results, selectedClient]);
-  
+
   // Handle client selection change
   function handleClientChange(clientName: string) {
     setSelectedClient(clientName === 'all' ? '' : clientName);
+  }
+
+  async function handleCleanPool() {
+    const devicesToProcess = selectedClient && selectedClient !== 'all'
+      ? filteredDevices
+      : devices;
+
+    if (devicesToProcess.length === 0) {
+      alert('No devices in the current pool to clean.');
+      return;
+    }
+
+    const confirmMessage = selectedClient && selectedClient !== 'all'
+      ? `Delete ${devicesToProcess.length} ${selectedClient} client devices one by one from the database? This action cannot be undone.`
+      : `Delete all ${devicesToProcess.length} devices one by one from the database? This action cannot be undone.`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsLoading(true);
+    setCurrentAction('cleaning');
+    setProgress(0);
+
+    let SucceededCount = 0;
+    let failedCount = 0;
+    const updatedResultsLocal = [...results]; // Work on a copy to update progressively
+
+    for (let i = 0; i < devicesToProcess.length; i++) {
+      const device = devicesToProcess[i];
+      const progressPercentage = Math.round(((i + 1) / devicesToProcess.length) * 100);
+      setProgress(progressPercentage);
+
+      if (!device.id) {
+        console.warn(`Skipping device without ID: ${device.serialNumber}`);
+        // Mark as error in UI if needed, or just skip
+        const resultIndex = updatedResultsLocal.findIndex(r => r.serialNumber === device.serialNumber);
+        if (resultIndex !== -1) {
+          updatedResultsLocal[resultIndex] = {
+            ...updatedResultsLocal[resultIndex],
+            error: true,
+            errorMessage: 'Skipped - Missing ID',
+          };
+        }
+        failedCount++;
+        continue;
+      }
+
+      try {
+        await deleteDeviceById(device.id); // Call action for a single device
+
+
+        SucceededCount++;
+        // Remove from local results if successfully deleted
+        const resultIndex = updatedResultsLocal.findIndex(r => r.serialNumber === device.serialNumber);
+        if (resultIndex !== -1) {
+          updatedResultsLocal.splice(resultIndex, 1);
+        }
+      } catch (error) {
+        failedCount++;
+        console.error(`Error during deletion of device ${device.serialNumber}:`, error);
+        const resultIndex = updatedResultsLocal.findIndex(r => r.serialNumber === device.serialNumber);
+        if (resultIndex !== -1) {
+          updatedResultsLocal[resultIndex] = {
+            ...updatedResultsLocal[resultIndex],
+            error: true,
+            errorMessage: error instanceof Error ? error.message : 'Exception during deletion',
+          };
+        }
+      }
+      setResults([...updatedResultsLocal]); // Update UI progressively after each attempt
+    }
+
+    setProgress(100);
+    setIsLoading(false);
+    setCurrentAction(null);
+
+    let summaryMessage = 'Device cleaning process completed.\n';
+    summaryMessage += `Successfully deleted: ${SucceededCount} device(s).\n`;
+    summaryMessage += `Failed to delete: ${failedCount} device(s).`;
+    alert(summaryMessage);
+
+    if (SucceededCount > 0) {
+      router.refresh(); // Refresh data from server if any device was successfully deleted
+    }
   }
 
   async function lookupWarranties() {
@@ -95,7 +179,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         const newResult = result.results.find(r => r.serialNumber === device.serialNumber);
         return newResult || deviceToWarrantyInfo(device);
       });
-      
+
       setResults(updatedResults);
       // Note: Removed router.refresh() to preserve API results
     } catch (error) {
@@ -174,35 +258,35 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           console.error(errorMessage);
           const resultIndexInMainArray = updatedResults.findIndex(r => r.serialNumber === resultInfo.serialNumber);
           if (resultIndexInMainArray !== -1) {
-             updatedResults[resultIndexInMainArray] = { ...updatedResults[resultIndexInMainArray], writtenBack: false, error: true, errorMessage: `Write-back exception: ${(updateError as Error).message}` };
+            updatedResults[resultIndexInMainArray] = { ...updatedResults[resultIndexInMainArray], writtenBack: false, error: true, errorMessage: `Write-back exception: ${(updateError as Error).message}` };
           }
         }
       } else if (originalDevice && originalDevice.sourcePlatform === Platform.CSV) {
         console.log(`Skipping write-back for ${resultInfo.serialNumber}, source is CSV.`);
       } else if (!originalDevice) {
-         console.warn(`Could not find original device for serial ${resultInfo.serialNumber} during write-back.`);
+        console.warn(`Could not find original device for serial ${resultInfo.serialNumber} during write-back.`);
       }
 
       setProgress(Math.round(((i + 1) / itemsToWriteBack.length) * 100));
       setResults([...updatedResults]); // Update results progressively
     }
-    
+
     setResults([...updatedResults]); // Final update
     setIsLoading(false);
     setProgress(100);
     alert(`Write-back process completed for ${itemsToWriteBack.length} eligible devices. Check results for details.`);
     router.refresh(); // Refresh data from server to get latest db state
   }
-  
+
   function exportToCSV() {
     if (!filteredResults.length) {
       alert('No results to export');
       return;
     }
-    
-    const csvContent = 
-      "data:text/csv;charset=utf-8," + 
-      "Device Name,Serial Number,Client Name,Manufacturer,Status,Start Date,End Date,Product,Source,Last Updated,Error Status,Write Back\n" + 
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      "Device Name,Serial Number,Client Name,Manufacturer,Status,Start Date,End Date,Product,Source,Last Updated,Error Status,Write Back\n" +
       filteredResults.map(item => {
         // Format error status
         let errorStatus = 'Success';
@@ -211,7 +295,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         } else if (!item.error && !item.errorMessage) {
           errorStatus = 'None';
         }
-        
+
         // Format write back status
         let writeBackStatus = 'Not Written';
         if (item.skipped) {
@@ -219,7 +303,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         } else if (item.writtenBack) {
           writeBackStatus = 'Success';
         }
-        
+
         return [
           item.hostname || 'Unknown Device',
           item.serialNumber,
@@ -235,10 +319,10 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           writeBackStatus
         ].map(field => String(field || '').replace(/,/g, ' ')).join(","); // Replace commas with spaces to prevent CSV issues
       }).join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    const filename = selectedClient && selectedClient !== 'all' 
+    const filename = selectedClient && selectedClient !== 'all'
       ? `warranty_report_${selectedClient}_${new Date().toISOString().split('T')[0]}.csv`
       : `warranty_report_${new Date().toISOString().split('T')[0]}.csv`;
     link.setAttribute("href", encodedUri);
@@ -264,7 +348,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           {clientData.clientNames.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold mb-4">Filter by Client</h3>
-              <ClientSelector 
+              <ClientSelector
                 clients={clientData.clientNames}
                 clientCounts={clientData.clientCounts}
                 currentClient={selectedClient}
@@ -274,67 +358,76 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
               />
             </div>
           )}
-          
+
           <div>
             <h3 className="text-lg font-semibold mb-2">Device Pool Actions</h3>
             <div className="space-y-4">
-              <div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Checkbox 
-                    id="skipExistingForLookup" 
-                    checked={skipExistingForLookup}
-                    onCheckedChange={(checked) => 
-                      setSkipExistingForLookup(checked === true)
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="skipExistingForLookup">
-                    Skip lookup for devices that already have warranty info
-                  </Label>
-                </div>
-                <Button 
-                  onClick={lookupWarranties} 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="skipExistingForLookup"
+                  checked={skipExistingForLookup}
+                  onCheckedChange={(checked) =>
+                    setSkipExistingForLookup(checked === true)
+                  }
+                  disabled={isLoading}
+                />
+                <Label htmlFor="skipExistingForLookup">
+                  Skip lookup for devices that already have warranty info
+                </Label>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={lookupWarranties}
                   disabled={isLoading || devicesInPoolCount === 0}
                   size="lg"
-                  className="w-full md:w-auto"
+                  className="w-full sm:w-auto"
                 >
                   {isLoading && currentAction === 'lookup' ? 'Looking up Warranties...' : `Lookup ${selectedClient && selectedClient !== 'all' ? `${selectedClient} ` : ''}Warranties (${devicesInPoolCount} in scope)`}
                 </Button>
-              </div>
-              
-              <div>
-                <Button 
-                  onClick={handleWriteBackWarranties} 
+                <Button
+                  onClick={handleWriteBackWarranties}
                   disabled={isLoading || !canWriteBack}
                   size="lg"
                   variant="outline"
-                  className="w-full md:w-auto"
+                  className="w-full sm:w-auto"
                 >
                   {isLoading && currentAction === 'writeback' ? 'Writing Back Warranties...' : 'Write Back Warranties to Source(s)'}
                 </Button>
-                 <p className="mt-1 text-sm text-gray-500">
-                  Writes newly fetched warranty data back to the original RMM platform (excluding CSV imports).
-                </p>
+                <Button
+                  onClick={handleCleanPool}
+                  disabled={isLoading}
+                  size="lg"
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                >
+                  Delete Devices from Pool
+                </Button>
               </div>
+
+              <p className="text-sm text-muted-foreground">
+                Writes newly fetched warranty data back to the original RMM platform (excluding CSV imports).
+              </p>
             </div>
           </div>
 
           {isLoading && currentAction && (
             <div className="w-full space-y-2 mt-4">
               <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full"
                   style={{ width: `${progress}%` }}
                 ></div>
               </div>
               <p className="text-sm text-gray-500">
                 {currentAction === 'lookup' && `Looked up ${progress}% of devices for warranty`}
                 {currentAction === 'writeback' && `Written back ${progress}% of warranties`}
+                {currentAction === 'cleaning' && (progress < 100 ? `Deleting devices... ${progress}%` : 'Deletion complete!')}
               </p>
             </div>
           )}
         </div>
-        
+
         {resultsCount > 0 && (
           <div className="mt-8">
             <div className="flex justify-between items-center mb-4">

@@ -23,9 +23,8 @@ export function parseCSVData(csvData: string): Device[] {
     // Map CSV columns to device properties
     headers.forEach((header, index) => {
       if (index < values.length) {
-        const value = values[index];
-        
-        switch (header) {
+        const value = values[index].replace(/^["']|["']$/g, '');
+        switch (header.replace(/^["']|["']$/g, '')) {
           case 'serial number':
           case 'serialnumber':
           case 'serial':

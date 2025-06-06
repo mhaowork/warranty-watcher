@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Platform } from '@/types/platform';
 import { getPlatformCredentials } from '@/lib/storage';
 
@@ -41,7 +42,10 @@ export default function PlatformCredentialStatus({ platform }: PlatformCredentia
   
   return (
     <p className="mt-2 text-sm text-amber-600">
-      No credentials configured for {platform}. Platform-specific actions may be limited.
+      No credentials configured for {platform}.{' '}
+      <Link href="/config" className="underline">
+        Go to the Configuration page to add them.
+      </Link>
     </p>
   );
 } 

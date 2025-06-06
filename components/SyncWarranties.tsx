@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Platform } from '@/types/platform';
 import { Device } from '@/types/device';
 import { WarrantyInfo } from '@/types/warranty';
@@ -434,7 +435,16 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
               <h3 className="text-lg font-semibold">
                 Warranty Results ({resultsCount} device{resultsCount !== 1 ? 's' : ''}{selectedClient && selectedClient !== 'all' ? ` for ${selectedClient}` : ''})
               </h3>
-              <Button onClick={exportToCSV} variant="outline" disabled={isLoading}>Export to CSV</Button>
+              <div className="flex items-center gap-2">
+                <Button asChild variant="outline" disabled={isLoading || resultsCount === 0}>
+                  <Link href={`/reports/lifecycle?client=${selectedClient}`} target="_blank" rel="noopener noreferrer">
+                    Generate Lifecycle Report
+                  </Link>
+                </Button>
+                <Button onClick={exportToCSV} variant="outline" disabled={isLoading || resultsCount === 0}>
+                  Export to CSV
+                </Button>
+              </div>
             </div>
             <WarrantyResults data={filteredResults} selectedClient={selectedClient} />
           </div>

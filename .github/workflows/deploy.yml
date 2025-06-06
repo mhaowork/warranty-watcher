@@ -28,7 +28,7 @@ jobs:
           cd /home/${{ secrets.HETZNER_USER }}/warranty-watcher
           
           # Pull latest changes
-          git pull origin main
+          git pull origin main --rebase
           
           # Stop existing containers
           docker-compose down

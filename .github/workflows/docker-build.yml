@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*' ]  # Trigger on version tags like v1.0.0
+    tags: [ 'v*' ]          # Trigger on version tags like v1.0.0
     paths-ignore:
       - '.github/**'
       - '.vscode/**'
@@ -16,100 +16,109 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Extract package version
-      id: package-version
-      run: |
-        VERSION=$(node -p "require('./package.json').version")
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "📦 Package version: $VERSION"
+      - name: Extract package version
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Package version: $VERSION"
 
-    - name: Check if this is a version tag push
-      id: check-tag
-      run: |
-        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-          echo "is_version_tag=true" >> $GITHUB_OUTPUT
-          echo "tag_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          echo "✅ This is a version tag push"
-        else
-          echo "is_version_tag=false" >> $GITHUB_OUTPUT
-          echo "ℹ️ This is a regular push"
-        fi
+      - name: Check if this is a version-tag push
+        id: check-tag
+        shell: bash
+        run: |
+          # DEBUG: print out what GITHUB_REF actually is at runtime
+          echo "DEBUG: GITHUB_REF = $GITHUB_REF"
 
-    - name: Verify version match (only for version tags)
-      if: steps.check-tag.outputs.is_version_tag == 'true'
-      run: |
-        PACKAGE_VERSION="${{ steps.package-version.outputs.version }}"
-        TAG_VERSION="${{ steps.check-tag.outputs.tag_version }}"
-        if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-          echo "❌ ERROR: package.json version ($PACKAGE_VERSION) doesn't match tag version ($TAG_VERSION)"
-          exit 1
-        fi
-        echo "✅ Version match confirmed"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "is_version_tag=true" >> $GITHUB_OUTPUT
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: mhaowork/warrantywatcher
-        tags: |
-          # For branch pushes (main/master)
-          type=ref,event=branch
-          type=ref,event=pr
-          # 'latest' tag only for main branch
-          type=raw,value=latest,enable={{is_default_branch}}
-          # Version tags only when pushing git tags
-          type=semver,pattern={{version}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
-          type=semver,pattern={{major}}.{{minor}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
-          type=semver,pattern={{major}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
-          # Package version tag only for version tag pushes
-          type=raw,value=${{ steps.package-version.outputs.version }},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
-          # Branch-specific tags with SHA for non-version pushes
-          type=sha,prefix={{branch}}-,enable=${{ steps.check-tag.outputs.is_version_tag != 'true' }}
-        labels: |
-          org.opencontainers.image.title=WarrantyWatcher
-          org.opencontainers.image.description=Warranty tracking and management system
-          org.opencontainers.image.version=${{ steps.package-version.outputs.version }}
+            # Strip off "refs/tags/v" prefix to get just "1.2.3", etc.
+            TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+            echo "✅ This is a version tag push (tag = $TAG_VERSION)"
+          else
+            echo "is_version_tag=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ This is a regular push"
+          fi
 
-    - name: Update deployment image
-      run: |
-        echo "🐳 Docker image built and pushed successfully!"
-        echo "📦 Available tags:"
-        echo "${{ steps.meta.outputs.tags }}"
-        echo ""
-        if [ "${{ steps.check-tag.outputs.is_version_tag }}" == "true" ]; then
-          echo "🎉 Version Release: ${{ steps.package-version.outputs.version }}"
-          echo "🚀 Users can now pull with:"
-          echo "docker pull mhaowork/warrantywatcher:latest"
-          echo "docker pull mhaowork/warrantywatcher:${{ steps.package-version.outputs.version }}"
-        else
-          echo "🔧 Development Build"
-          echo "🚀 Users can pull with:"
-          echo "docker pull mhaowork/warrantywatcher:latest"
-          echo "docker pull mhaowork/warrantywatcher:main-${GITHUB_SHA::8}"
-        fi
+      - name: Verify version match (only for version tags)
+        if: steps.check-tag.outputs.is_version_tag == 'true'
+        run: |
+          PACKAGE_VERSION="${{ steps.package-version.outputs.version }}"
+          TAG_VERSION="${{ steps.check-tag.outputs.tag_version }}"
+
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ ERROR: package.json version ($PACKAGE_VERSION) doesn't match tag version ($TAG_VERSION)"
+            exit 1
+          fi
+
+          echo "✅ Version match confirmed"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: mhaowork/warrantywatcher
+          tags: |
+            # For branch pushes (main/master) and PRs:
+            type=ref,event=branch
+            type=ref,event=pr
+            # 'latest' tag only for main/master branch:
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Version tags only when pushing a git tag:
+            type=semver,pattern={{version}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
+            type=semver,pattern={{major}},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
+            # Package version tag only for version-tag pushes:
+            type=raw,value=${{ steps.package-version.outputs.version }},enable=${{ steps.check-tag.outputs.is_version_tag == 'true' }}
+            # Branch-specific tags with SHA for non-version pushes:
+            type=sha,prefix={{branch}}-,enable=${{ steps.check-tag.outputs.is_version_tag != 'true' }}
+          labels: |
+            org.opencontainers.image.title=WarrantyWatcher
+            org.opencontainers.image.description=Warranty tracking and management system
+            org.opencontainers.image.version=${{ steps.package-version.outputs.version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update deployment image
+        run: |
+          echo "🐳 Docker image built and pushed successfully!"
+          echo "📦 Available tags: ${{ steps.meta.outputs.tags }}"
+          echo ""
+          if [ "${{ steps.check-tag.outputs.is_version_tag }}" == "true" ]; then
+            echo "🎉 Version Release: ${{ steps.package-version.outputs.version }}"
+            echo "🚀 Users can now pull with:"
+            echo "   docker pull mhaowork/warrantywatcher:latest"
+            echo "   docker pull mhaowork/warrantywatcher:${{ steps.package-version.outputs.version }}"
+          else
+            echo "🔧 Development Build"
+            echo "🚀 Users can pull with:"
+            echo "   docker pull mhaowork/warrantywatcher:latest"
+            echo "   docker pull mhaowork/warrantywatcher:main-${GITHUB_SHA::8}"
+          fi

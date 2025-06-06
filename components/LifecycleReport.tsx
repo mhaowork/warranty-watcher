@@ -283,8 +283,9 @@ export default function LifecycleReport({ data, clientName, reportDate, reportTi
     <>
       <style jsx global>{`
         @media print {
-          /* Hide website header/navigation */
-          header {
+          /* Hide website header/navigation and footer */
+          header,
+          footer {
             display: none !important;
           }
           

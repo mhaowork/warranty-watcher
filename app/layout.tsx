@@ -37,11 +37,6 @@ export default function RootLayout({
                     </Link>
                   </li>
                   <li>
-                    <Link href="/sync">
-                      <Button variant="ghost">Sync</Button>
-                    </Link>
-                  </li>
-                  <li>
                     <Link href="/reports/lifecycle">
                       <Button variant="ghost">Reports</Button>
                     </Link>

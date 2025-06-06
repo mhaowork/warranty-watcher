@@ -30,14 +30,17 @@ jobs:
           # Pull latest changes
           git pull origin main --rebase
           
+          # Build images first to reduce downtime.
+          docker-compose build
+          
           # Stop existing containers
           docker-compose down
           
+          # Start new containers
+          docker-compose up -d
+          
           # Remove old images to free space
           docker image prune -f
-          
-          # Build and start new containers
-          docker-compose up -d --build
           
           # Show running containers
           docker-compose ps

@@ -168,20 +168,35 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
     try {
       const result = await lookupWarrantiesForDevices(filteredDevices, {
         skipExistingForLookup,
-        onProgress: setProgress
+        onProgress: setProgress,
+        onDeviceResult: (deviceResult, deviceIndex) => {
+          // Update results in real-time as each device is processed
+          setResults(currentResults => {
+            const updatedResults = [...currentResults];
+            // Find the device in the original devices array and update its result
+            const deviceToUpdate = filteredDevices[deviceIndex];
+            const resultIndex = updatedResults.findIndex(r => r.serialNumber === deviceToUpdate.serialNumber);
+            
+            if (resultIndex !== -1) {
+              updatedResults[resultIndex] = deviceResult;
+            }
+            
+            return updatedResults;
+          });
+        }
       });
 
       if (!result.success) {
         throw new Error(result.error || 'Warranty lookup failed');
       }
 
-      // Merge the new results with existing results for non-filtered devices
-      const updatedResults = devices.map(device => {
+      // Final update to ensure all results are properly set
+      const finalResults = devices.map(device => {
         const newResult = result.results.find(r => r.serialNumber === device.serialNumber);
         return newResult || deviceToWarrantyInfo(device);
       });
 
-      setResults(updatedResults);
+      setResults(finalResults);
       // Note: Removed router.refresh() to preserve API results
     } catch (error) {
       console.error('Warranty lookup failed:', error);

@@ -1,3 +1,5 @@
+'use server';
+
 import { Device } from '../../types/device';
 import { WarrantyInfo } from '../../types/warranty';
 import { Platform } from '../../types/platform';

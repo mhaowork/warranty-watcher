@@ -4,6 +4,7 @@ import { WarrantyInfo } from '../../../../types/warranty';
 import { updateDattoWarranty } from '../../../../lib/platforms/datto';
 import { updateNCentralWarranty } from '../../../../lib/platforms/ncentral';
 import { markWarrantyAsWrittenBack } from '../../../../lib/services/warrantySync';
+import { HaloPSACredentials, updateHaloPSAWarranty } from '@/lib/platforms/halopsa';
 
 // Define typed credentials for each platform
 type DattoCredentials = {
@@ -55,7 +56,17 @@ export async function POST(request: Request) {
         );
         break;
       }
-      
+
+      case Platform.HALOPSA: {
+        console.log(`Updating device ${deviceId} in HaloPSA with warranty info:`, warranty);
+        const haloPSACreds = credentials as HaloPSACredentials;
+        updateSuccess = await updateHaloPSAWarranty(
+          deviceId,
+          warranty.endDate,
+          haloPSACreds
+        );
+        break;
+      }
       default: {
         return NextResponse.json(
           { error: `Platform ${platform} is not supported for updates` },

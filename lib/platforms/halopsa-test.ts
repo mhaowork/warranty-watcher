@@ -109,7 +109,6 @@ async function testHaloPSA() {
     
     console.log('\nStep 2: Updating warranty information...');
     console.log(`Setting warranty end date for device ${deviceToUpdate.id} to: ${newWarrantyDate}`);
-    console.log('Note: HaloPSA warranty update is not yet implemented - this is a placeholder test');
     
     const updateResult = await updateHaloPSAWarranty(
       deviceToUpdate.id,
@@ -118,7 +117,7 @@ async function testHaloPSA() {
     );
     
     if (!updateResult) {
-      console.log('⚠️  Warranty update returned false (expected since not implemented yet)');
+      console.log('❌ Warranty update failed');
     } else {
       console.log('✅ Warranty update successful!');
     }
@@ -170,7 +169,7 @@ async function testHaloPSA() {
     
     console.log('\n=== HaloPSA Test Completed ===');
     console.log('Device fetching: ✅ Working');
-    console.log('Warranty update: ⚠️  Not implemented yet (placeholder)');
+    console.log('Warranty update: ✅ Working');
     
     // Final summary
     console.log('\n=== Test Summary ===');

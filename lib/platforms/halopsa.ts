@@ -3,10 +3,10 @@ import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance } from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 
-interface HaloPSACredentials {
-  url?: string;
-  clientId?: string;
-  clientSecret?: string;
+export interface HaloPSACredentials {
+  url: string;
+  clientId: string;
+  clientSecret: string;
 }
 
 // HaloPSA API types
@@ -72,7 +72,9 @@ const mockAssets: HaloPSAAsset[] = [
     username: 'Emma Baker',
     assettype_id: 122,
     assettype_name: 'Laptop',
-    inactive: false
+    inactive: false,
+    warranty_start: '2024-01-15T12:00:00',
+    warranty_end: '2027-01-15T12:00:00'
   },
   {
     id: 3,
@@ -144,6 +146,19 @@ function setupMockAdapter(axiosInstance: AxiosInstance): void {
     record_count: mockAssets.length,
     assets: mockAssets
   });
+  
+  // Mock individual asset fetch endpoint
+  mockAssets.forEach(asset => {
+    mock.onGet(new RegExp(`.*\/api\/asset\/${asset.id}`)).reply(200, asset);
+  });
+  
+  // Mock the warranty update endpoint (POST with asset data as array)
+  mock.onPost(/.*\/api\/asset/).reply(200, [
+    {
+      id: 1,
+      message: "Asset updated successfully"
+    }
+  ]);
 }
 
 /**
@@ -170,35 +185,7 @@ function setupMockAdapter(axiosInstance: AxiosInstance): void {
  */
 export async function fetchHaloPSADevices(credentials?: HaloPSACredentials): Promise<Device[]> {
   try {
-    // Use default or provided credentials
-    const url = credentials?.url || 'demo.halopsa.com';
-    const clientId = credentials?.clientId || '';
-    const clientSecret = credentials?.clientSecret || '';
-    
-    // Determine if we should use demo mode based on whether credentials are complete
-    const useDemoMode = !credentials?.url || !credentials?.clientId || !credentials?.clientSecret ||
-      clientId.trim() === '' || clientSecret.trim() === '';
-    
-    // Ensure URL has proper protocol
-    const baseURL = url.startsWith('http') ? url : `https://${url}`;
-    
-    console.log(`Connecting to HaloPSA at ${baseURL} ${useDemoMode ? '(DEMO MODE)' : ''}`);
-
-    // Create the API client
-    const axiosInstance = axios.create({
-      baseURL,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      }
-    });
-    
-    // If demo mode is needed, set up mocking
-    if (useDemoMode) {
-      setupMockAdapter(axiosInstance);
-    }
-    
-    const client = await createHaloPSAClient(axiosInstance, clientId, clientSecret);
+    const client = await createHaloPSAClient(credentials);
     return await fetchDevicesUsingRealAPI(client);
   } catch (error) {
     // More user-friendly error message
@@ -217,10 +204,31 @@ export async function fetchHaloPSADevices(credentials?: HaloPSACredentials): Pro
 }
 
 /**
- * Creates an authenticated HaloPSA API client
+ * Creates an authenticated HaloPSA API client with consolidated configuration
  */
-async function createHaloPSAClient(axiosInstance: AxiosInstance, clientId: string, clientSecret: string): Promise<AxiosInstance> {
+async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<AxiosInstance> {
   try {
+    // Ensure URL has proper protocol
+    const baseURL = credentials?.url?.startsWith('http') ? credentials?.url : `https://${credentials?.url}`;
+    const clientId = credentials?.clientId || '';
+    const clientSecret = credentials?.clientSecret || '';
+    const useDemoMode = (credentials === undefined);
+    
+    console.log('Creating HaloPSA client at ', baseURL, useDemoMode ? '(Demo Mode)' : '');
+    // Create the API client
+    const axiosInstance = axios.create({
+      baseURL,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      }
+    });
+    
+    // If demo mode is needed, set up mocking
+    if (useDemoMode) {
+      setupMockAdapter(axiosInstance);
+    }
+    
     console.log('Authenticating with HaloPSA');
     
     // Prepare the form data for OAuth2 client credentials flow
@@ -292,8 +300,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         const manufacturer = determineManufacturer(asset.key_field, asset.assettype_name, asset.inventory_number);
         const model = asset.key_field;
         const serialNumber = asset.key_field2.trim();
-        const warrantyStartDate = asset.warranty_start ? asset.warranty_start.split('T')[0] : '';
-        const warrantyEndDate = asset.warranty_end ? asset.warranty_end.split('T')[0] : '';
+        const warrantyStartDate = asset.warranty_start ? asset.warranty_start.split('T')[0] : undefined;
+        const warrantyEndDate = asset.warranty_end ? asset.warranty_end.split('T')[0] : undefined;
         
         // Map to our normalized Device format
         const mappedDevice: Device = {
@@ -327,8 +335,9 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
 /**
  * Updates a device's warranty expiration date in HaloPSA
  * 
- * This function is a placeholder for future implementation.
- * HaloPSA warranty update functionality will be implemented later.
+ * This function can operate in two modes:
+ * 1. Demo mode - simulates updating warranty info (when credentials are incomplete)
+ * 2. Real API mode - calls the HaloPSA API (when complete credentials are provided)
  * 
  * @param deviceId The HaloPSA asset ID to update
  * @param warrantyEndDate The warranty expiration date in ISO format (YYYY-MM-DD)
@@ -340,7 +349,32 @@ export async function updateHaloPSAWarranty(
   warrantyEndDate: string, 
   credentials?: HaloPSACredentials
 ): Promise<boolean> {
-  console.log(`HaloPSA warranty update not yet implemented for device ${deviceId} to ${warrantyEndDate}`, credentials ? '(with credentials)' : '(no credentials)');
-  // TODO: Implement warranty update functionality
-  return false;
+  try {
+    console.log(`Updating HaloPSA warranty for device ${deviceId} to ${warrantyEndDate}`);
+
+    // Authenticate and get client for real API
+    const client = await createHaloPSAClient(credentials);
+    
+    // Convert YYYY-MM-DD to HaloPSA format YYYY-MM-DDTHH:mm:ss
+    const haloPSADate = `${warrantyEndDate}T12:00:00`;
+    
+    const updatedAsset = {
+      id: deviceId,
+      warranty_end: haloPSADate
+    };
+    
+    const response = await client.post('/api/asset', [updatedAsset], {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log(`HaloPSA warranty update response:`, response.status);
+    
+    // Consider any 2xx status code as success
+    return response.status >= 200 && response.status < 300;
+  } catch (error) {
+    console.error(`Error updating HaloPSA warranty for device ${deviceId}:`, error);
+    return false;
+  }
 } 

@@ -24,6 +24,8 @@ interface HaloPSAAsset {
   assettype_id: number;
   assettype_name: string;
   inactive: boolean;
+  warranty_start?: string; // e.g. 2025-06-04T12:00:00
+  warranty_end?: string; // e.g. 2026-06-04T12:00:00
   [key: string]: unknown;
 }
 
@@ -53,7 +55,9 @@ const mockAssets: HaloPSAAsset[] = [
     username: 'Mario Monroe',
     assettype_id: 121,
     assettype_name: 'Desktop Computer',
-    inactive: false
+    inactive: false,
+    warranty_start: '2025-06-04T12:00:00',
+    warranty_end: '2026-06-04T12:00:00'
   },
   {
     id: 2,
@@ -288,6 +292,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         const manufacturer = determineManufacturer(asset.key_field, asset.assettype_name, asset.inventory_number);
         const model = asset.key_field;
         const serialNumber = asset.key_field2.trim();
+        const warrantyStartDate = asset.warranty_start ? asset.warranty_start.split('T')[0] : '';
+        const warrantyEndDate = asset.warranty_end ? asset.warranty_end.split('T')[0] : '';
         
         // Map to our normalized Device format
         const mappedDevice: Device = {
@@ -298,9 +304,11 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           hostname: asset.inventory_number || '',
           clientId: asset.client_id.toString(),
           clientName: asset.client_name || '',
-          deviceClass: asset.assettype_name || ''
+          deviceClass: asset.assettype_name || '',
+          warrantyStartDate: warrantyStartDate,
+          warrantyEndDate: warrantyEndDate
         };
-        
+
         result.push(mappedDevice);
       } catch (error) {
         console.error(`Error processing asset ${asset.id}:`, error);

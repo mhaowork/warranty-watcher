@@ -76,6 +76,23 @@ const platformSchema = z.object({
       path: ['serverUrl'] // Attach error to serverUrl field to aid display
     }
   ),
+  [Platform.HALOPSA]: z.object({
+    url: z.string(),
+    clientId: z.string(),
+    clientSecret: z.string(),
+  })
+  .refine(
+    data => {
+      // If any field is filled, all fields are required
+      const hasAnyValue = data.url || data.clientId || data.clientSecret;
+      if (!hasAnyValue) return true; // All fields are empty, that's valid
+      return Boolean(data.url && data.clientId && data.clientSecret);
+    },
+    {
+      message: "All HaloPSA fields are required if any of them are filled",
+      path: ['url'] // Attach error to url field to aid display
+    }
+  ),
 });
 
 export default function ConfigForm() {
@@ -95,6 +112,7 @@ export default function ConfigForm() {
     defaultValues: {
       [Platform.DATTO_RMM]: { url: '', apiKey: '', secretKey: '' },
       [Platform.NCENTRAL]: { serverUrl: '', apiToken: '' },
+      [Platform.HALOPSA]: { url: '', clientId: '', clientSecret: '' },
     },
   });
   
@@ -136,6 +154,12 @@ export default function ConfigForm() {
           serverUrl: '',
           apiToken: '',
           ...platformCreds[Platform.NCENTRAL]
+        },
+        [Platform.HALOPSA]: {
+          url: '',
+          clientId: '',
+          clientSecret: '',
+          ...platformCreds[Platform.HALOPSA]
         }
       };
       platformForm.reset(mergedPlatformCreds);
@@ -370,6 +394,66 @@ export default function ConfigForm() {
                             </FormControl>
                             <FormDescription>
                               Your N-central User-API Token (JWT) generated from the N-central UI. Click <a href="https://developer.n-able.com/n-central/docs/create-an-api-only-user" target="_blank" rel="noopener noreferrer">here</a> for more information.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">HaloPSA</h3>
+                    <div className="space-y-4">
+                      <FormField
+                        control={platformForm.control}
+                        name={`${Platform.HALOPSA}.url`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>URL</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter HaloPSA URL (e.g., acme-tech.halopsa.com)" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Your HaloPSA instance URL (without https://)
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={platformForm.control}
+                        name={`${Platform.HALOPSA}.clientId`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Client ID</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter HaloPSA Client ID" {...field} />
+                            </FormControl>
+                            <FormDescription>
+                              Your HaloPSA OAuth2 Client ID
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={platformForm.control}
+                        name={`${Platform.HALOPSA}.clientSecret`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Client Secret</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="password"
+                                placeholder="Enter HaloPSA Client Secret" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Your HaloPSA OAuth2 Client Secret
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

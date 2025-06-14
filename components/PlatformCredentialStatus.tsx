@@ -27,6 +27,12 @@ export default function PlatformCredentialStatus({ platform }: PlatformCredentia
         platformCreds[Platform.NCENTRAL]?.serverUrl && 
         platformCreds[Platform.NCENTRAL]?.apiToken
       );
+    } else if (platform === Platform.HALOPSA) {
+      hasCredentials = Boolean(
+        platformCreds[Platform.HALOPSA]?.url && 
+        platformCreds[Platform.HALOPSA]?.clientId && 
+        platformCreds[Platform.HALOPSA]?.clientSecret
+      );
     }
     // CSV does not require credentials in this context.
     else if (platform === Platform.CSV) {

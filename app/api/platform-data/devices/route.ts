@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Platform } from '../../../../types/platform';
 import { fetchDattoDevices } from '../../../../lib/platforms/datto';
 import { fetchNCentralDevices } from '../../../../lib/platforms/ncentral';
+import { fetchHaloPSADevices } from '../../../../lib/platforms/halopsa';
 import { storeDevicesInPool } from '../../../../lib/services/warrantySync';
 
 export async function POST(request: Request) {
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
         
       case Platform.NCENTRAL:
         devices = await fetchNCentralDevices(safeCredentials);
+        break;
+        
+      case Platform.HALOPSA:
+        devices = await fetchHaloPSADevices(safeCredentials);
         break;
         
       case Platform.CSV:

@@ -15,7 +15,7 @@ import PlatformCredentialStatus from './PlatformCredentialStatus';
 export default function ImportDevices() {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const configuredPlatforms = [Platform.DATTO_RMM, Platform.NCENTRAL, Platform.CSV];
+  const configuredPlatforms = [Platform.DATTO_RMM, Platform.NCENTRAL, Platform.HALOPSA, Platform.CSV];
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(Platform.DATTO_RMM);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const router = useRouter();
@@ -131,6 +131,9 @@ export default function ImportDevices() {
                     )}
                     {configuredPlatforms.includes(Platform.NCENTRAL) && (
                       <SelectItem value={Platform.NCENTRAL}>N-able N-central</SelectItem>
+                    )}
+                    {configuredPlatforms.includes(Platform.HALOPSA) && (
+                      <SelectItem value={Platform.HALOPSA}>HaloPSA</SelectItem>
                     )}
                   </SelectContent>
                 </Select>

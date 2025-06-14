@@ -105,7 +105,6 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           model: 'EliteBook 840 G8 (mock data)',
           hostname: 'DESKTOP-FGHIJ2',
           // This device already has warranty info
-          hasWarrantyInfo: true,
           warrantyEndDate: '2025-01-15'
         },
         {
@@ -122,7 +121,6 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           model: 'ProBook 450 G8 (mock data)',
           hostname: 'DESKTOP-PQRST4',
           // This device already has warranty info (expired)
-          hasWarrantyInfo: true,
           warrantyEndDate: '2023-03-10'
         },
         {
@@ -167,7 +165,6 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           model: 'ThinkCentre M70q',
           hostname: 'DESKTOP-TUVWX10',
           // This device has a warranty set to 2026
-          hasWarrantyInfo: true,
           warrantyEndDate: '2026-10-01'
         }
       ];
@@ -342,16 +339,13 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         }
 
         // Check for warranty information from Datto RMM
-        let hasWarrantyInfo = false;
         let warrantyEndDate: string | undefined = undefined;
         
         // Check for warranty info in device data (primary) or audit data (fallback)
         if (device.warrantyDate) {
-          hasWarrantyInfo = true;
           warrantyEndDate = device.warrantyDate;
           console.log(`Found warranty end date from device data: ${warrantyEndDate}`);
         } else if (audit.warrantyInfo && audit.warrantyInfo.warrantyEndDate) {
-          hasWarrantyInfo = true;
           warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
           console.log(`Found warranty end date from audit data: ${warrantyEndDate}`);
         }
@@ -364,7 +358,6 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           model: audit.systemInfo.model || '',
           hostname: device.hostname,
           clientName: device.siteName,
-          hasWarrantyInfo: hasWarrantyInfo,
           warrantyEndDate: warrantyEndDate
         };
 

@@ -127,7 +127,6 @@ function mapRowToDevice(row: DeviceRow): Device {
     warrantyEndDate: row.warranty_end_date || undefined,
     warrantyFetchedAt: row.warranty_fetched_at || undefined,
     warrantyWrittenBackAt: row.warranty_written_back_at || undefined,
-    hasWarrantyInfo: !!row.warranty_fetched_at,
   };
 }
 

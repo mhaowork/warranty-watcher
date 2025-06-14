@@ -49,7 +49,7 @@ async function testDattoRMM() {
     console.log(`Successfully fetched ${devices.length} devices from Datto RMM API`);
     
     // Count devices with warranty information
-    const devicesWithWarranty = devices.filter(device => device.hasWarrantyInfo);
+    const devicesWithWarranty = devices.filter(device => device.warrantyEndDate);
     console.log(`Found ${devicesWithWarranty.length} devices with warranty information`);
     
     // Select a device to update
@@ -70,9 +70,9 @@ async function testDattoRMM() {
     console.log(`  Hostname: ${deviceToUpdate.hostname || 'N/A'}`);
     
     // Display current warranty info
-    if (deviceToUpdate.hasWarrantyInfo) {
+    if (deviceToUpdate.warrantyEndDate) {
       console.log('  Current Warranty Info:');
-      console.log(`    End Date: ${deviceToUpdate.warrantyEndDate || 'N/A'}`);
+      console.log(`    End Date: ${deviceToUpdate.warrantyEndDate}`);
     } else {
       console.log('  No warranty info currently available');
     }
@@ -127,7 +127,7 @@ async function testDattoRMM() {
     console.log(`  Model: ${updatedDevice.model || 'N/A'}`);
     console.log(`  Hostname: ${updatedDevice.hostname || 'N/A'}`);
     
-    if (updatedDevice.hasWarrantyInfo) {
+    if (updatedDevice.warrantyEndDate) {
       console.log('  Updated Warranty Info:');
       console.log(`    End Date: ${updatedDevice.warrantyEndDate || 'N/A'}`);
       

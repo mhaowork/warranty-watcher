@@ -49,7 +49,7 @@ async function testHaloPSA() {
     console.log(`Successfully fetched ${devices.length} devices from HaloPSA API`);
     
     // Count devices with warranty information
-    const devicesWithWarranty = devices.filter(device => device.hasWarrantyInfo);
+    const devicesWithWarranty = devices.filter(device => device.warrantyEndDate);
     console.log(`Found ${devicesWithWarranty.length} devices with warranty information`);
     
     // Display all devices
@@ -64,8 +64,8 @@ async function testHaloPSA() {
       console.log(`    Client: ${device.clientName || 'N/A'} (ID: ${device.clientId || 'N/A'})`);
       console.log(`    Device Class: ${device.deviceClass || 'N/A'}`);
       
-      if (device.hasWarrantyInfo) {
-        console.log(`    Warranty End Date: ${device.warrantyEndDate || 'N/A'}`);
+      if (device.warrantyEndDate) {
+        console.log(`    Warranty: ${device.warrantyEndDate}`);
       } else {
         console.log(`    Warranty: No warranty info available`);
       }
@@ -91,9 +91,9 @@ async function testHaloPSA() {
     console.log(`  Client: ${deviceToUpdate.clientName || 'N/A'} (ID: ${deviceToUpdate.clientId || 'N/A'})`);
     
     // Display current warranty info
-    if (deviceToUpdate.hasWarrantyInfo) {
+    if (deviceToUpdate.warrantyEndDate) {
       console.log('  Current Warranty Info:');
-      console.log(`    End Date: ${deviceToUpdate.warrantyEndDate || 'N/A'}`);
+      console.log(`    End Date: ${deviceToUpdate.warrantyEndDate}`);
     } else {
       console.log('  No warranty info currently available');
     }
@@ -150,7 +150,7 @@ async function testHaloPSA() {
     console.log(`  Hostname: ${updatedDevice.hostname || 'N/A'}`);
     console.log(`  Client: ${updatedDevice.clientName || 'N/A'} (ID: ${updatedDevice.clientId || 'N/A'})`);
     
-    if (updatedDevice.hasWarrantyInfo) {
+    if (updatedDevice.warrantyEndDate) {
       console.log('  Updated Warranty Info:');
       console.log(`    End Date: ${updatedDevice.warrantyEndDate || 'N/A'}`);
       

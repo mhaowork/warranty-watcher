@@ -36,7 +36,7 @@ async function testDatabase() {
         serialNumber: devices[0].serialNumber,
         manufacturer: devices[0].manufacturer,
         model: devices[0].model,
-        hasWarrantyInfo: devices[0].hasWarrantyInfo
+        warrantyEndDate: devices[0].warrantyEndDate
       });
     }
     

@@ -25,7 +25,6 @@ export interface Device {
   warrantyWrittenBackAt?: number; // Unix epoch timestamp when warranty was written back to source
   
   // Computed fields (not stored in DB, calculated at runtime)
-  hasWarrantyInfo?: boolean;
   needsWarrantyLookup?: boolean;
 
   // System information (optional, from RMM platforms)

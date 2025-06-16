@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Inter } from 'next/font/google';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import './globals.css';
 import { Button } from '../components/ui/button';
 import ClientFooter from '../components/ClientFooter';
@@ -47,7 +48,9 @@ export default function RootLayout({
           </header>
           
           <main className="flex-1">
-            {children}
+            <NuqsAdapter>
+              {children}
+            </NuqsAdapter>
           </main>
           
           <ClientFooter />

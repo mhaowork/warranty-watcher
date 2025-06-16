@@ -1,10 +1,15 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useQueryState } from 'nuqs';
 import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
 import { formatRelativeTime } from '@/lib/utils/dateUtils';
 import { WarrantyInfo } from '../types/warranty';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { CheckCircle, XCircle, MinusCircle, FileText, Server, AlertTriangle, Building } from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { CheckCircle, XCircle, MinusCircle, FileText, Server, AlertTriangle, Building, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface WarrantyResultsProps {
@@ -14,7 +19,7 @@ interface WarrantyResultsProps {
 
 function getSourceIcon(source?: string) {
   if (!source || source === 'Unknown') {
-    return <Server className="h-4 w-4 text-gray-500 mr-1" />;
+    return <Server className="h-4 w-4 text-muted-foreground mr-1" />;
   }
   
   if (source === 'CSV') {
@@ -26,11 +31,43 @@ function getSourceIcon(source?: string) {
 }
 
 export default function WarrantyResults({ data, selectedClient }: WarrantyResultsProps) {
+  const [search, setSearch] = useQueryState('search', { defaultValue: '' });
+  const [page, setPage] = useQueryState('page', { defaultValue: 1, parse: Number });
+  const [pageSize, setPageSize] = useQueryState('pageSize', { defaultValue: 50, parse: Number });
+
+  // Filter data based on search
+  const filteredData = useMemo(() => {
+    if (!search.trim()) return data;
+    
+    const searchLower = search.toLowerCase().trim();
+    return data.filter(item => 
+      item.hostname?.toLowerCase().includes(searchLower) ||
+      item.serialNumber?.toLowerCase().includes(searchLower) ||
+      item.clientName?.toLowerCase().includes(searchLower) ||
+      item.manufacturer?.toLowerCase().includes(searchLower) ||
+      item.productDescription?.toLowerCase().includes(searchLower)
+    );
+  }, [data, search]);
+
+  // Calculate pagination
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useMemo(() => {
+    if (page > totalPages && totalPages > 0) {
+      setPage(1);
+    }
+  }, [totalPages, page, setPage]);
+
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="text-gray-500 mb-4">
-          <Building className="w-16 h-16 mx-auto mb-2 text-gray-300" />
+        <div className="text-muted-foreground mb-4">
+          <Building className="w-16 h-16 mx-auto mb-2 text-muted" />
           <p className="text-lg font-medium">No warranty information available</p>
           {selectedClient && (
             <p className="text-sm">No devices found for client &quot;{selectedClient}&quot;</p>
@@ -57,10 +94,50 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
           </div>
         )}
 
+        {/* Search and Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search devices, serials, clients..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Results Info */}
+        <div className="text-sm text-muted-foreground">
+          {search && (
+            <span>
+              Found {totalItems} of {data.length} devices • 
+            </span>
+          )}
+          <span>
+            Showing {Math.min(startIndex + 1, totalItems)}-{Math.min(endIndex, totalItems)} of {totalItems} devices
+            {selectedClient && ` from ${selectedClient}`}
+          </span>
+        </div>
+
         <Table>
           <TableCaption>
-            Warranty information for {data.length} devices
-            {selectedClient && ` from ${selectedClient}`}
+            Warranty information
           </TableCaption>
           <TableHeader>
             <TableRow>
@@ -78,12 +155,12 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((item, index) => (
+            {paginatedData.map((item, index) => (
               <TableRow key={index}>
                 <TableCell className="font-medium">
                   <div className="flex flex-col">
                     <span className="font-semibold">{item.hostname || 'Unknown Device'}</span>
-                    <span className="text-xs text-gray-500">{item.serialNumber}</span>
+                    <span className="text-xs text-muted-foreground">{item.serialNumber}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -113,7 +190,7 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
                     <span className="text-xs">{item.deviceSource || 'Unknown'}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-xs text-gray-600">
+                <TableCell className="text-xs text-muted-foreground">
                   {formatRelativeTime(item.lastUpdated)}
                 </TableCell>
                 <TableCell>
@@ -140,7 +217,7 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
                     </div>
                   ) : !item.error && !item.errorMessage ? (
                     <div className="flex items-center">
-                      <MinusCircle className="h-4 w-4 text-gray-500" />
+                      <MinusCircle className="h-4 w-4 text-muted-foreground" />
                     </div>
                   ) : (
                     <div className="flex items-center">
@@ -152,7 +229,7 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
                 <TableCell>
                   {item.skipped ? (
                     <div className="flex items-center">
-                      <MinusCircle className="h-4 w-4 text-gray-500 mr-1" />
+                      <MinusCircle className="h-4 w-4 text-muted-foreground mr-1" />
                       <span className="text-xs">Skipped</span>
                     </div>
                   ) : item.writtenBack ? (
@@ -162,7 +239,7 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
                     </div>
                   ) : (
                     <div className="flex items-center">
-                      <XCircle className="h-4 w-4 text-gray-500 mr-1" />
+                      <XCircle className="h-4 w-4 text-muted-foreground mr-1" />
                       <span className="text-xs">Not Written</span>
                     </div>
                   )}
@@ -171,6 +248,85 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
             ))}
           </TableBody>
         </Table>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+                First
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPage(pageNum)}
+                      className="w-10"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(totalPages)}
+                disabled={page === totalPages}
+              >
+                Last
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );

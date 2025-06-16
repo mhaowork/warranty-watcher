@@ -1,5 +1,5 @@
-// This test uses TypeScript directly with ts-node
-// To run: NODE_OPTIONS='--experimental-specifier-resolution=node' npx tsx lib/platforms/halopsa-test.ts
+// This test uses TypeScript directly with tsx
+// To run: npx tsx lib/platforms/halopsa-test.ts
 
 // Import dotenv to load environment variables from .env file
 import 'dotenv/config';

@@ -1,5 +1,5 @@
 // This test uses TypeScript directly with tsx
-// To run: NODE_OPTIONS='--experimental-specifier-resolution=node' npx tsx lib/database/test-database.ts
+// To run: npx tsx lib/database/test-database.ts
 
 import { insertOrUpdateDevice, getAllDevices, getDatabase } from './index.js';
 import { Manufacturer } from '../../types/manufacturer.js';

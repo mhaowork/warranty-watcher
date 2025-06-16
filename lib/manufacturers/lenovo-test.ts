@@ -1,5 +1,5 @@
 // This test uses TypeScript directly with tsx
-// To run: NODE_OPTIONS='--experimental-specifier-resolution=node' npx tsx lib/manufacturers/lenovo-test.ts
+// To run: npx tsx lib/manufacturers/lenovo-test.ts
 
 // Import dotenv to load API credentials from .env file
 import 'dotenv/config';

@@ -23,7 +23,7 @@ If you like this project, buy me a coffee at https://github.com/sponsors/mhaowor
 ## Supported Platforms
 
 - **PSA Tools**
-  - ⏳ None yet (future support planned)
+  - ✅ HaloPSA
 
 - **RMM Platforms**
   - ✅ Datto RMM
@@ -94,6 +94,7 @@ docker-compose up -d
 2. Configure platform credentials (Datto RMM, N-Central etc)
    - Datto RMM: See the [official guide](https://rmm.datto.com/help/en/Content/2SETUP/APIv2.htm) to activate the API and get your key
    - N-central RMM: Follow [this doc](https://developer.n-able.com/n-central/docs/create-an-api-only-user) to create an API-only user and get your JSON Web Token aka API key.
+   - HaloPSA: See [this guide](docs/halopsa.md) for how to set up the connection for importing devices.
 
 3. Sync devices from your platform or upload a CSV file. 
 4. View and export warranty information. You can choose to write the warranty info back to the source platform (RMM / PSA)

@@ -215,6 +215,7 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
     const clientSecret = credentials?.clientSecret || '';
     const useDemoMode = (credentials === undefined);
     
+
     logger.info(`Creating HaloPSA client at ${baseURL} ${useDemoMode ? '(Demo Mode)' : ''}`, 'halopsa-api', {
       baseURL,
       mode: useDemoMode ? 'demo' : 'api'

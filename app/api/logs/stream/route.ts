@@ -6,6 +6,8 @@ export async function GET() {
   // Create a readable stream for Server-Sent Events
   const stream = new ReadableStream({
     start(controller) {
+      let isControllerClosed = false;
+      
       // Send initial connection message
       const initialMessage = `data: ${JSON.stringify({
         type: 'connected',
@@ -17,15 +19,21 @@ export async function GET() {
       // Send recent logs immediately upon connection
       const recentLogs = logger.getRecentLogs(50);
       recentLogs.forEach(log => {
-        const message = `data: ${JSON.stringify({
-          type: 'log',
-          ...log
-        })}\n\n`;
-        controller.enqueue(new TextEncoder().encode(message));
+        if (!isControllerClosed) {
+          const message = `data: ${JSON.stringify({
+            type: 'log',
+            ...log
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(message));
+        }
       });
 
       // Subscribe to new logs
       const subscriptionId = logger.subscribe((log: LogEntry) => {
+        if (isControllerClosed) {
+          return; // Don't try to send if controller is closed
+        }
+        
         try {
           const message = `data: ${JSON.stringify({
             type: 'log',
@@ -33,12 +41,19 @@ export async function GET() {
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(message));
         } catch (error) {
-          console.error('Error streaming log:', error);
+          // Mark controller as closed if we get an error
+          if (error instanceof TypeError && error.message.includes('Controller is already closed')) {
+            isControllerClosed = true;
+            logger.unsubscribe(subscriptionId);
+          } else {
+            console.error('Error streaming log:', error);
+          }
         }
       });
 
-      // Handle client disconnect
-      const cleanup = () => {
+      // Handle client disconnect cleanup
+      return () => {
+        isControllerClosed = true;
         logger.unsubscribe(subscriptionId);
         try {
           controller.close();
@@ -46,16 +61,8 @@ export async function GET() {
           // Controller might already be closed
         }
       };
-
-      // Store cleanup function for potential use
-      // Note: This is a simplified approach. In production, you might want
-      // to track connections more robustly
-      return cleanup;
     },
-    cancel() {
-      // This will be called when the client disconnects
-      logger.info('Log stream client disconnected', 'logger-api');
-    }
+    cancel() {}
   });
 
   // Return SSE response

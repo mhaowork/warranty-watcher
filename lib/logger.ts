@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from 'uuid';
+
 export interface LogEntry {
   id: string;
   timestamp: number;
@@ -16,12 +18,11 @@ class LogManager {
   private logs: LogEntry[] = [];
   private subscribers: LogSubscriber[] = [];
   private maxLogs = 1000; // Keep last 1000 logs in memory
-  private logIdCounter = 0;
 
   // Add a new log entry
   log(level: LogEntry['level'], message: string, source?: string, metadata?: Record<string, unknown>) {
     const logEntry: LogEntry = {
-      id: `log-${++this.logIdCounter}`,
+      id: uuidv4(),
       timestamp: Date.now(),
       level,
       message,
@@ -113,8 +114,15 @@ class LogManager {
   }
 }
 
-// Export singleton instance
-export const logger = new LogManager();
+// True global singleton - survives module reloading
+declare global {
+  interface GlobalThis {
+    __logger?: LogManager;
+  }
+}
+
+// Export singleton instance - reuse existing or create new
+export const logger = globalThis.__logger ?? (globalThis.__logger = new LogManager());
 
 // Export type for external use
 export type { LogManager };

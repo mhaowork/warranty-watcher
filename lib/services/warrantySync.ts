@@ -88,6 +88,7 @@ export async function getDevicesForWarrantySync(
   options: SyncOptions
 ): Promise<Device[]> {
   const { skipExistingWarrantyInfo } = options;
+
   
   if (!skipExistingWarrantyInfo) {
     // If not skipping existing warranty info, process all devices

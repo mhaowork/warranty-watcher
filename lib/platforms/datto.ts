@@ -279,37 +279,68 @@ async function createDattoRMMClient(apiUrl: string, apiKey: string, secretKey: s
  */
 async function getAllDevices(client: AxiosInstance): Promise<DattoDevice[]> {
   try {
-    // Get first page - using the correct endpoint and parameters!
-    const response = await client.get<DevicesPage>('/v2/account/devices', {
-      params: {
-        max: 250,
-        page: 0
-      }
-    });
+    const allDevices: DattoDevice[] = [];
+    let currentPage = 0;
+    let hasMorePages = true;
+    let totalCount = 0;
+    const maxPages = 100; // Safety limit: 100 pages = 25,000 devices max
+    const pageSize = 250;
 
-    let devices = response.data.devices;
-    const totalCount = response.data.pageDetails.totalCount;
-    
-    // If we have more devices than what we've fetched, we need more pages
-    if (totalCount > devices.length && response.data.pageDetails.nextPageUrl) {
-      // Extract page number from nextPageUrl
-      const pageMatch = response.data.pageDetails.nextPageUrl.match(/page=(\d+)/);
-      if (pageMatch && pageMatch[1]) {
-        const nextPage = parseInt(pageMatch[1], 10);
+    logger.info('Starting to fetch all devices from Datto RMM...', 'datto-api');
+
+    while (hasMorePages && currentPage < maxPages) {
+      logger.debug(`Fetching page ${currentPage} from Datto RMM...`, 'datto-api', {
+        page: currentPage
+      });
+
+      const response = await client.get<DevicesPage>('/v2/account/devices', {
+        params: {
+          max: pageSize,
+          page: currentPage
+        }
+      });
+
+      const pageDevices = response.data.devices;
+      totalCount = response.data.pageDetails.totalCount;
+      
+      allDevices.push(...pageDevices);
+
+      logger.debug(`Fetched ${pageDevices.length} devices on page ${currentPage}. Total so far: ${allDevices.length}/${totalCount}`, 'datto-api', {
+        page: currentPage,
+        pageDeviceCount: pageDevices.length,
+        totalFetched: allDevices.length,
+        totalCount
+      });
+
+      // Check if we have more pages to fetch
+      // Stop if: no nextPageUrl, we got 0 devices on this page, or we've reached totalCount
+      hasMorePages = response.data.pageDetails.nextPageUrl !== null && 
+                     pageDevices.length > 0 && 
+                     allDevices.length < totalCount;
+      
+      if (hasMorePages) {
+        currentPage++;
         
-        // Get next page
-        const nextPageResponse = await client.get<DevicesPage>('/v2/account/devices', {
-          params: {
-            max: 250,
-            page: nextPage
-          }
-        });
-        
-        devices = [...devices, ...nextPageResponse.data.devices];
+        // Add a small delay between requests to be respectful to the API
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
-    return devices;
+    if (currentPage >= maxPages) {
+      logger.warn(`Hit safety limit of ${maxPages} pages at ${maxPages * pageSize} devices. Fetched ${allDevices.length} devices, but there may be more.`, 'datto-api', {
+        totalDevices: allDevices.length,
+        totalPages: currentPage,
+        totalCount,
+        hitSafetyLimit: true
+      });
+    } else {
+      logger.info(`Successfully fetched all ${allDevices.length} devices from Datto RMM`, 'datto-api', {
+        totalDevices: allDevices.length,
+        totalPages: currentPage + 1
+      });
+    }
+
+    return allDevices;
   } catch (error) {
     logger.error(`Error fetching Datto RMM devices: ${error}`, 'datto-api', {
       error: error instanceof Error ? error.message : String(error)
@@ -341,9 +372,16 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
   try {
     const devices = await getAllDevices(client);
     const result: Device[] = [];
+    
+    // Rate limiting configuration - keeps us under 600 requests/60 seconds
+    // Reference: https://rmm.datto.com/help/en/Content/2SETUP/APIv2.htm
+    const auditDelayMs = 150; // ~6.7 requests/second with safety buffer
+    let processedCount = 0;
 
     logger.info(`Processing ${devices.length} devices from Datto RMM...`, 'datto-api', {
-      deviceCount: devices.length
+      deviceCount: devices.length,
+      estimatedTimeMinutes: Math.round((devices.length * auditDelayMs) / 60000 * 10) / 10,
+      auditDelayMs
     });
 
     // Process each device
@@ -370,6 +408,21 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         });
         
         const audit = await getDeviceAudit(client, device.uid);
+        
+        // Rate limiting: Add delay after each audit call to respect API limits
+        processedCount++;
+        
+        // Log progress every 50 devices
+        if (processedCount % 50 === 0) {
+          logger.info(`Progress: ${processedCount}/${devices.length} devices processed (${Math.round(processedCount/devices.length*100)}%)`, 'datto-api', {
+            processedCount,
+            totalDevices: devices.length,
+            progressPercentage: Math.round(processedCount/devices.length*100)
+          });
+        }
+        
+        // Add delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, auditDelayMs));
 
         // Determine manufacturer enum
         let manufacturer = Manufacturer.DELL;
@@ -420,6 +473,13 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         // Continue with next device even if this one fails
       }
     }
+
+    logger.info(`Completed processing ${result.length} devices from Datto RMM`, 'datto-api', {
+      totalProcessed: result.length,
+      totalDevices: devices.length,
+      skippedNonDevices: devices.length - processedCount,
+      processingTimeEstimateMinutes: Math.round((processedCount * auditDelayMs) / 60000 * 10) / 10
+    });
 
     return result;
   } catch (error) {

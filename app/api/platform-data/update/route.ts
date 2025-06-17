@@ -118,8 +118,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     logger.error(`Error updating warranty information: ${error}`, 'update-api', {
-      deviceId,
-      platform,
       error: error instanceof Error ? error.message : String(error)
     });
     return NextResponse.json(

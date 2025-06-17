@@ -18,7 +18,7 @@ export async function GET() {
 
       // Send recent logs immediately upon connection
       const recentLogs = logger.getRecentLogs(50);
-      recentLogs.forEach(log => {
+      recentLogs.forEach((log: LogEntry) => {
         if (!isControllerClosed) {
           const message = `data: ${JSON.stringify({
             type: 'log',

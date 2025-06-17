@@ -122,6 +122,7 @@ declare global {
 }
 
 // Export singleton instance - reuse existing or create new
+// @ts-expect-error - ignore for now
 export const logger = globalThis.__logger ?? (globalThis.__logger = new LogManager());
 
 // Export type for external use

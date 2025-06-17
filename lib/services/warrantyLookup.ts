@@ -117,7 +117,9 @@ export async function lookupWarrantiesForDevices(
       success: true
     };
   } catch (error) {
-    console.error('Warranty lookup failed:', error);
+    logger.error(`Warranty lookup failed: ${error}`, 'warranty-lookup', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     const errorResults = devices.map(d => ({
       ...deviceToWarrantyInfo(d),
       error: true,

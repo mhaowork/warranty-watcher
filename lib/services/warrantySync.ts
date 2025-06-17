@@ -137,9 +137,14 @@ export async function storeWarrantyInfo(
       endDate: warrantyInfo.endDate
     });
     
-    console.log(`Stored warranty info for ${serialNumber} in database`);
+    logger.info(`Stored warranty info for ${serialNumber} in database`, 'warranty-sync', {
+      serialNumber
+    });
   } catch (error) {
-    console.error(`Error storing warranty info for ${serialNumber}:`, error);
+    logger.error(`Error storing warranty info for ${serialNumber}: ${error}`, 'warranty-sync', {
+      serialNumber,
+      error: error instanceof Error ? error.message : String(error)
+    });
     // Don't throw - this shouldn't break the sync process
   }
 }
@@ -150,9 +155,14 @@ export async function storeWarrantyInfo(
 export async function markWarrantyAsWrittenBack(serialNumber: string): Promise<void> {
   try {
     await markWarrantyWrittenBack(serialNumber);
-    console.log(`Marked warranty as written back for ${serialNumber}`);
+    logger.info(`Marked warranty as written back for ${serialNumber}`, 'warranty-sync', {
+      serialNumber
+    });
   } catch (error) {
-    console.error(`Error marking warranty as written back for ${serialNumber}:`, error);
+    logger.error(`Error marking warranty as written back for ${serialNumber}: ${error}`, 'warranty-sync', {
+      serialNumber,
+      error: error instanceof Error ? error.message : String(error)
+    });
     // Don't throw - this shouldn't break the sync process
   }
 }
@@ -167,14 +177,19 @@ export async function fetchAndStoreDeviceWarranty(
 ): Promise<WarrantyInfo> {
   const warrantyInfo = deviceToWarrantyInfo(device);
   if (!device.serialNumber) {
-    console.warn(`Skipping device ID ${device.id} - no serial number.`);
+    logger.warn(`Skipping device ID ${device.id} - no serial number.`, 'warranty-sync', {
+      deviceId: device.id
+    });
     warrantyInfo.error = true;
     warrantyInfo.errorMessage = 'Missing serial number';
     warrantyInfo.skipped = true;
     return warrantyInfo;
   }
 
-  console.log(`Fetching warranty from external API for ${device.serialNumber}`);
+  logger.info(`Fetching warranty from external API for ${device.serialNumber}`, 'warranty-sync', {
+    serialNumber: device.serialNumber,
+    manufacturer: device.manufacturer
+  });
   // TODO: fix the type def for warrantyDates (it should not be WarrantyInfo)
   try {
     // Use manufacturer-specific API implementations
@@ -220,7 +235,11 @@ export async function fetchAndStoreDeviceWarranty(
     }
 
   } catch (error) {
-    console.error(`Error fetching warranty for ${device.serialNumber} from external API:`, error);
+    logger.error(`Error fetching warranty for ${device.serialNumber} from external API: ${error}`, 'warranty-sync', {
+      serialNumber: device.serialNumber,
+      manufacturer: device.manufacturer,
+      error: error instanceof Error ? error.message : String(error)
+    });
     warrantyInfo.error = true;
     warrantyInfo.errorMessage = error instanceof Error ? error.message : 'API fetch failed';
     return warrantyInfo;

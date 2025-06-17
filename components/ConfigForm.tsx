@@ -8,6 +8,7 @@ import { Manufacturer } from '../types/manufacturer';
 import { Platform } from '../types/platform';
 import { getManufacturerCredentials, getPlatformCredentials, saveManufacturerCredentials, savePlatformCredentials } from '../lib/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { logger } from '@/lib/logger';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -68,7 +69,11 @@ const platformSchema = z.object({
       // If any field is filled, all fields are required
       const hasAnyValue = data.serverUrl || data.apiToken;
       if (!hasAnyValue) return true; // All fields are empty, that's valid
-      console.log('result', Boolean(data.serverUrl && data.apiToken)); // this returns false in my testing
+      logger.debug('N-Central credential validation result', 'config-form', {
+        hasServerUrl: Boolean(data.serverUrl),
+        hasApiToken: Boolean(data.apiToken),
+        result: Boolean(data.serverUrl && data.apiToken)
+      });
       return Boolean(data.serverUrl && data.apiToken);
     },
     {
@@ -173,14 +178,18 @@ export default function ConfigForm() {
     values[Manufacturer.HP].apiKey = apiKey;
     values[Manufacturer.LENOVO].apiKey = apiKey;
     
-    console.log('Saving manufacturer credentials:', values);
+    logger.info('Saving manufacturer credentials', 'config-form', {
+      credentialsCount: Object.keys(values).length
+    });
     saveManufacturerCredentials(values);
     alert('Manufacturer credentials saved successfully!');
   }
   
   // Handler for platform form submission
   function onPlatformSubmit(values: z.infer<typeof platformSchema>) {
-    console.log('Saving platform credentials:', values);
+    logger.info('Saving platform credentials', 'config-form', {
+      credentialsCount: Object.keys(values).length
+    });
     savePlatformCredentials(values);
     alert('Platform credentials saved successfully!');
   }

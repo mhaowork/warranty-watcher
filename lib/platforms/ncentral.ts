@@ -285,7 +285,10 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
     
     while (hasMorePages && pageNumber <= maxPages) {
       try {
-        console.log(`Fetching devices page ${pageNumber} (${pageSize} items per page)`);
+        logger.debug(`Fetching devices page ${pageNumber} (${pageSize} items per page)`, 'ncentral-api', {
+          pageNumber,
+          pageSize
+        });
         const response = await client.get('/api/devices', {
           params: {
             pageSize,
@@ -293,18 +296,21 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
           }
         });
         
-        console.log('API response received');
+        logger.debug('API response received', 'ncentral-api');
         
         // Based on the example response format, we know devices are in responseData.data
         const responseData = response.data;
         const devices: NCentralDeviceItem[] = responseData.data;
         
         if (!Array.isArray(devices)) {
-          console.error('Unexpected response format');
+          logger.error('Unexpected response format from N-Central', 'ncentral-api');
           throw new Error('Unexpected API response format');
         }
         
-        console.log(`Found ${devices.length} devices in response`);
+        logger.debug(`Found ${devices.length} devices in response`, 'ncentral-api', {
+          deviceCount: devices.length,
+          pageNumber
+        });
         
         if (devices.length === 0) {
           // No more devices to process
@@ -341,7 +347,10 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
             result.push(mappedDevice);
           } catch (error) {
             // Ignoring specific error details - just log the failure
-            console.error(`Error processing device ${device.deviceId}:`, error);
+            logger.error(`Error processing device ${device.deviceId}: ${error}`, 'ncentral-api', {
+              deviceId: device.deviceId,
+              error: error instanceof Error ? error.message : String(error)
+            });
             // Continue with next device even if this one fails
           }
         }
@@ -355,18 +364,28 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         
         // If we've reached the max page limit, log a warning
         if (pageNumber > maxPages && hasMorePages) {
-          console.warn(`Reached maximum page limit (${maxPages}). Some devices may not be returned.`);
+          logger.warn(`Reached maximum page limit (${maxPages}). Some devices may not be returned.`, 'ncentral-api', {
+            maxPages,
+            currentPage: pageNumber
+          });
         }
       } catch (error) {
-        console.error(`Error fetching N-central devices page ${pageNumber}:`, error);
+        logger.error(`Error fetching N-central devices page ${pageNumber}: ${error}`, 'ncentral-api', {
+          pageNumber,
+          error: error instanceof Error ? error.message : String(error)
+        });
         hasMorePages = false;
       }
     }
     
-    console.log(`Completed fetching devices. Total devices found: ${result.length}`);
+    logger.info(`Completed fetching devices. Total devices found: ${result.length}`, 'ncentral-api', {
+      totalDevices: result.length
+    });
     return result;
   } catch (error) {
-    console.error('Error fetching all N-central devices:', error);
+    logger.error(`Error fetching all N-central devices: ${error}`, 'ncentral-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -396,7 +415,11 @@ export async function updateNCentralWarranty(
     // Determine if we should use demo mode based on whether credentials are complete
     const useDemoMode = !credentials?.serverUrl || !credentials?.apiToken || apiToken.trim() === '';
     
-    console.log(`Updating N-central warranty for device ${deviceId} to ${warrantyEndDate} ${useDemoMode ? '(DEMO MODE)' : ''}`);
+    logger.info(`Updating N-central warranty for device ${deviceId} to ${warrantyEndDate} ${useDemoMode ? '(DEMO MODE)' : ''}`, 'ncentral-api', {
+      deviceId,
+      warrantyEndDate,
+      mode: useDemoMode ? 'demo' : 'api'
+    });
 
     // Create the API client
     const axiosInstance = axios.create({
@@ -411,7 +434,11 @@ export async function updateNCentralWarranty(
     if (useDemoMode) {
       setupWarrantyUpdateMock(axiosInstance);
       // In demo mode, just log and return success
-      console.log(`DEMO: Would update device ${deviceId} warranty to expire on ${warrantyEndDate}`);
+      logger.info(`DEMO: Would update device ${deviceId} warranty to expire on ${warrantyEndDate}`, 'ncentral-api', {
+        deviceId,
+        warrantyEndDate,
+        mode: 'demo'
+      });
       return true;
     }
     
@@ -423,12 +450,17 @@ export async function updateNCentralWarranty(
       warrantyExpiryDate: warrantyEndDate
     });
     
-    console.log(`N-central warranty update response:`, response.status);
+    logger.info('N-central warranty update response received', 'ncentral-api', {
+      statusCode: response.status
+    });
     
     // Consider any 2xx status code as success
     return response.status >= 200 && response.status < 300;
   } catch (error) {
-    console.error(`Error updating N-central warranty for device ${deviceId}:`, error);
+    logger.error(`Error updating N-central warranty for device ${deviceId}: ${error}`, 'ncentral-api', {
+      deviceId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return false;
   }
 }

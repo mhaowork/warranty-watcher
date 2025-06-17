@@ -56,7 +56,7 @@ export function LogViewer() {
         const data: LogMessage = JSON.parse(event.data);
         
         if (data.type === 'connected') {
-          console.log('Connected to log stream');
+          // Connected to log stream - no need to log this
         } else if (data.type === 'log' && data.id) {
           const newLog: LogEntry = {
             id: data.id,

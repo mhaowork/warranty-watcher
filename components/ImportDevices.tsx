@@ -8,6 +8,7 @@ import { parseCSVData } from '@/lib/platforms/csv';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { logger } from '@/lib/logger';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import PlatformCredentialStatus from './PlatformCredentialStatus';
@@ -49,7 +50,10 @@ export default function ImportDevices() {
       router.refresh();
       
     } catch (error) {
-      console.error('Import failed:', error);
+      logger.error(`Import failed: ${error}`, 'import-devices', {
+        platform: selectedPlatform,
+        error: error instanceof Error ? error.message : String(error)
+      });
       alert('Failed to import devices: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsLoading(false);
@@ -92,7 +96,9 @@ export default function ImportDevices() {
         alert(`${message} (${stored} of ${total} devices stored). Refreshing device list...`);
         router.refresh();
       } catch (error) {
-        console.error('Failed to parse or store CSV:', error);
+        logger.error(`Failed to parse or store CSV: ${error}`, 'import-devices', {
+          error: error instanceof Error ? error.message : String(error)
+        });
         alert('Failed to process CSV file: ' + (error instanceof Error ? error.message : 'Unknown error'));
       } finally {
         setIsLoading(false);

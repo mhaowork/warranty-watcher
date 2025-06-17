@@ -13,6 +13,7 @@ import { deleteDeviceById } from '@/lib/database';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';
+import { logger } from '@/lib/logger';
 import { Label } from './ui/label';
 import WarrantyResults from './WarrantyResults';
 import ClientSelector from './ClientSelector';
@@ -99,7 +100,9 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
       setProgress(progressPercentage);
 
       if (!device.id) {
-        console.warn(`Skipping device without ID: ${device.serialNumber}`);
+        logger.warn(`Skipping device without ID: ${device.serialNumber}`, 'sync-warranties', {
+          serialNumber: device.serialNumber
+        });
         // Mark as error in UI if needed, or just skip
         const resultIndex = updatedResultsLocal.findIndex(r => r.serialNumber === device.serialNumber);
         if (resultIndex !== -1) {
@@ -125,7 +128,10 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
         }
       } catch (error) {
         failedCount++;
-        console.error(`Error during deletion of device ${device.serialNumber}:`, error);
+        logger.error(`Error during deletion of device ${device.serialNumber}: ${error}`, 'sync-warranties', {
+          serialNumber: device.serialNumber,
+          error: error instanceof Error ? error.message : String(error)
+        });
         const resultIndex = updatedResultsLocal.findIndex(r => r.serialNumber === device.serialNumber);
         if (resultIndex !== -1) {
           updatedResultsLocal[resultIndex] = {
@@ -199,7 +205,9 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
       setResults(finalResults);
       // Note: Removed router.refresh() to preserve API results
     } catch (error) {
-      console.error('Warranty lookup failed:', error);
+      logger.error(`Warranty lookup failed: ${error}`, 'sync-warranties', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       alert('Warranty lookup failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
       const errorResults = devices.map(d => ({
         ...deviceToWarrantyInfo(d),
@@ -234,7 +242,10 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
       const originalDevice = devices.find(d => d.serialNumber === resultInfo.serialNumber);
 
       if (originalDevice && originalDevice.id && originalDevice.sourcePlatform && originalDevice.sourcePlatform !== Platform.CSV) {
-        console.log(`Attempting to write back warranty for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}`);
+        logger.info(`Attempting to write back warranty for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}`, 'sync-warranties', {
+          serialNumber: resultInfo.serialNumber,
+          platform: originalDevice.sourcePlatform
+        });
         try {
           const response = await fetch('/api/platform-data/update', {
             method: 'POST',
@@ -256,14 +267,20 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           const resultIndexInMainArray = updatedResults.findIndex(r => r.serialNumber === resultInfo.serialNumber);
 
           if (response.ok) {
-            console.log(`Successfully wrote back warranty for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}`);
+            logger.info(`Successfully wrote back warranty for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}`, 'sync-warranties', {
+              serialNumber: resultInfo.serialNumber,
+              platform: originalDevice.sourcePlatform
+            });
             if (resultIndexInMainArray !== -1) {
               updatedResults[resultIndexInMainArray] = { ...updatedResults[resultIndexInMainArray], writtenBack: true, error: false, errorMessage: undefined };
             }
           } else {
             const errorData = await response.json();
             const errorMessage = `Write-back failed for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}: ${errorData.error || 'Unknown API error'}`;
-            console.error(errorMessage);
+            logger.error(errorMessage, 'sync-warranties', {
+              serialNumber: resultInfo.serialNumber,
+              platform: originalDevice.sourcePlatform
+            });
             alert(errorMessage); // Consider a less intrusive notification for multiple failures
             if (resultIndexInMainArray !== -1) {
               updatedResults[resultIndexInMainArray] = { ...updatedResults[resultIndexInMainArray], writtenBack: false, error: true, errorMessage: `Write-back failed: ${errorData.error || 'API error'}` };
@@ -271,16 +288,24 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
           }
         } catch (updateError) {
           const errorMessage = `Exception during write-back for ${resultInfo.serialNumber}: ${(updateError as Error).message}`;
-          console.error(errorMessage);
+          logger.error(errorMessage, 'sync-warranties', {
+            serialNumber: resultInfo.serialNumber,
+            error: (updateError as Error).message
+          });
           const resultIndexInMainArray = updatedResults.findIndex(r => r.serialNumber === resultInfo.serialNumber);
           if (resultIndexInMainArray !== -1) {
             updatedResults[resultIndexInMainArray] = { ...updatedResults[resultIndexInMainArray], writtenBack: false, error: true, errorMessage: `Write-back exception: ${(updateError as Error).message}` };
           }
         }
       } else if (originalDevice && originalDevice.sourcePlatform === Platform.CSV) {
-        console.log(`Skipping write-back for ${resultInfo.serialNumber}, source is CSV.`);
+        logger.debug(`Skipping write-back for ${resultInfo.serialNumber}, source is CSV.`, 'sync-warranties', {
+          serialNumber: resultInfo.serialNumber,
+          source: 'CSV'
+        });
       } else if (!originalDevice) {
-        console.warn(`Could not find original device for serial ${resultInfo.serialNumber} during write-back.`);
+        logger.warn(`Could not find original device for serial ${resultInfo.serialNumber} during write-back.`, 'sync-warranties', {
+          serialNumber: resultInfo.serialNumber
+        });
       }
 
       setProgress(Math.round(((i + 1) / itemsToWriteBack.length) * 100));

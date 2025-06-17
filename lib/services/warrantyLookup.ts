@@ -5,6 +5,7 @@ import { WarrantyInfo } from '@/types/warranty';
 import { getManufacturerCredentials } from '@/lib/storage';
 import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 import { fetchAndStoreDeviceWarranty } from '@/lib/services/warrantySync';
+import { logger } from '@/lib/logger';
 
 export interface WarrantyLookupOptions {
   skipExistingForLookup: boolean;
@@ -24,16 +25,24 @@ export async function lookupWarrantiesForDevices(
 ): Promise<WarrantyLookupResult> {
   const { skipExistingForLookup, onProgress, onDeviceResult } = options;
   
+  logger.info(`Starting warranty lookup for ${devices.length} devices`, 'warranty-lookup', {
+    deviceCount: devices.length,
+    skipExisting: skipExistingForLookup
+  });
+  
   if (!devices.length) {
+    const error = 'No devices provided to process for warranty lookup.';
+    logger.warn(error, 'warranty-lookup');
     return {
       results: [],
       success: false,
-      error: 'No devices provided to process for warranty lookup.'
+      error
     };
   }
 
   try {
     const manufacturerCreds = getManufacturerCredentials();
+    logger.debug('Retrieved manufacturer credentials', 'warranty-lookup');
     
     onProgress?.(5); // Initial setup complete
 
@@ -48,14 +57,20 @@ export async function lookupWarrantiesForDevices(
       try {
         // Ensure device has a serial number before attempting to fetch warranty
         if (!device.serialNumber) {
-          console.warn(`Skipping device ID ${device.id || 'N/A'} due to missing serial number.`);
+          logger.warn(`Skipping device ID ${device.id || 'N/A'} due to missing serial number`, 'warranty-lookup', {
+            deviceId: device.id,
+            deviceIndex: i
+          });
           warrantyInfo = deviceToWarrantyInfo(device);
           warrantyInfo.error = true;
           warrantyInfo.errorMessage = 'Missing serial number';
           warrantyInfo.skipped = true;
         } else if (skipExistingForLookup && device.warrantyFetchedAt) {
           // Skip if device already has warranty info and skipExistingForLookup is true
-          console.log(`Skipping ${device.serialNumber} (lookup) - already has warranty info`);
+          logger.debug(`Skipping ${device.serialNumber} (lookup) - already has warranty info`, 'warranty-lookup', {
+            serialNumber: device.serialNumber,
+            warrantyFetchedAt: device.warrantyFetchedAt
+          });
           warrantyInfo = {
             ...deviceToWarrantyInfo(device),
             skipped: true,
@@ -63,10 +78,20 @@ export async function lookupWarrantiesForDevices(
           };
         } else {
           // Fetch warranty information for this device
+          logger.info(`Processing warranty lookup for device: ${device.serialNumber}`, 'warranty-lookup', {
+            serialNumber: device.serialNumber,
+            manufacturer: device.manufacturer,
+            deviceIndex: i + 1,
+            totalDevices
+          });
           warrantyInfo = await fetchAndStoreDeviceWarranty(device, manufacturerCreds);
         }
       } catch (e) {
-        console.error(`Critical error processing device ${device.serialNumber}:`, e);
+        logger.error(`Critical error processing device ${device.serialNumber}: ${e}`, 'warranty-lookup', {
+          serialNumber: device.serialNumber,
+          deviceIndex: i + 1,
+          error: e instanceof Error ? e.message : String(e)
+        });
         warrantyInfo = deviceToWarrantyInfo(device);
         warrantyInfo.error = true;
         warrantyInfo.errorMessage = e instanceof Error ? e.message : 'Individual device processing failed';

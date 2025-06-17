@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
+import { logger } from '../logger';
 
 // Database path configuration
 const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'warranty.db');
@@ -233,7 +234,10 @@ export async function insertOrUpdateDevice(device: Device): Promise<void> {
     ];
     
     await runStatement(updateQuery, updateParams);
-    console.log(`Updated existing device: ${device.serialNumber}`);
+    logger.debug(`Updated existing device: ${device.serialNumber}`, 'database', {
+      serialNumber: device.serialNumber,
+      manufacturer: device.manufacturer
+    });
   } else {
     // Device doesn't exist - perform INSERT operation
     const insertQuery = `
@@ -264,7 +268,10 @@ export async function insertOrUpdateDevice(device: Device): Promise<void> {
     ];
     
     await runStatement(insertQuery, insertParams);
-    console.log(`Inserted new device: ${device.serialNumber}`);
+    logger.debug(`Inserted new device: ${device.serialNumber}`, 'database', {
+      serialNumber: device.serialNumber,
+      manufacturer: device.manufacturer
+    });
   }
 }
 

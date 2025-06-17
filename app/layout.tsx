@@ -42,6 +42,11 @@ export default function RootLayout({
                       <Button variant="ghost">Reports</Button>
                     </Link>
                   </li>
+                  <li>
+                    <Link href="/logs">
+                      <Button variant="ghost">Logs</Button>
+                    </Link>
+                  </li>
                 </ul>
               </nav>
             </div>

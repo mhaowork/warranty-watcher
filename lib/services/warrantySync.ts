@@ -15,6 +15,7 @@ import {
   markWarrantyWrittenBack,
 } from '../database';
 import { deviceToWarrantyInfo } from '../utils/deviceUtils';
+import { logger } from '../logger';
 
 export interface SyncOptions {
   writeBackToSource: boolean;
@@ -38,7 +39,7 @@ export async function storeDevicesInPool(
   devices: Device[], 
   sourcePlatform: Platform
 ): Promise<{ successCount: number; errorCount: number }> {
-  console.log(`Storing ${devices.length} devices from ${sourcePlatform} in database...`);
+  logger.info(`Storing ${devices.length} devices from ${sourcePlatform} in database...`, 'warranty-sync');
   
   let successCount = 0;
   let errorCount = 0;
@@ -55,14 +56,27 @@ export async function storeDevicesInPool(
 
       await insertOrUpdateDevice(deviceToStore);
       successCount++;
+      logger.debug(`Stored device: ${device.serialNumber}`, 'warranty-sync', { 
+        serialNumber: device.serialNumber,
+        manufacturer: device.manufacturer,
+        sourcePlatform 
+      });
     } catch (error) {
-      console.error(`Error storing device ${device.serialNumber} from ${sourcePlatform}:`, error);
+      logger.error(`Error storing device ${device.serialNumber} from ${sourcePlatform}: ${error}`, 'warranty-sync', {
+        serialNumber: device.serialNumber,
+        sourcePlatform,
+        error: error instanceof Error ? error.message : String(error)
+      });
       errorCount++;
       // Continue with other devices even if one fails
     }
   }
   
-  console.log(`Successfully stored ${successCount} devices from ${sourcePlatform}. Errors: ${errorCount}`);
+  logger.info(`Successfully stored ${successCount} devices from ${sourcePlatform}. Errors: ${errorCount}`, 'warranty-sync', {
+    successCount,
+    errorCount,
+    sourcePlatform
+  });
   return { successCount, errorCount };
 }
 
@@ -92,10 +106,16 @@ export async function getDevicesForWarrantySync(
         // Device not in database or no warranty info fetched yet
         devicesNeedingLookup.push(device);
       } else {
-        console.log(`Skipping ${device.serialNumber} - already has warranty info in database`);
+        logger.debug(`Skipping ${device.serialNumber} - already has warranty info in database`, 'warranty-sync', {
+          serialNumber: device.serialNumber,
+          warrantyFetchedAt: dbDevice.warrantyFetchedAt
+        });
       }
     } catch (error) {
-      console.error(`Error checking warranty existence for ${device.serialNumber}:`, error);
+      logger.error(`Error checking warranty existence for ${device.serialNumber}: ${error}`, 'warranty-sync', {
+        serialNumber: device.serialNumber,
+        error: error instanceof Error ? error.message : String(error)
+      });
       // If there's an error, include the device for lookup to be safe
       devicesNeedingLookup.push(device);
     }

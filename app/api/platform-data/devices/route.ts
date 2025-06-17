@@ -4,6 +4,7 @@ import { fetchDattoDevices } from '../../../../lib/platforms/datto';
 import { fetchNCentralDevices } from '../../../../lib/platforms/ncentral';
 import { fetchHaloPSADevices } from '../../../../lib/platforms/halopsa';
 import { storeDevicesInPool } from '../../../../lib/services/warrantySync';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
@@ -44,12 +45,20 @@ export async function POST(request: Request) {
     // Store devices in database for caching and tracking
     if (devices && devices.length > 0) {
       const result = await storeDevicesInPool(devices, platform);
-      console.log(`Stored ${result.successCount} of ${devices.length} devices from ${platform} in database`);
+      logger.info(`Stored ${result.successCount} of ${devices.length} devices from ${platform} in database`, 'platform-api', {
+        platform,
+        totalDevices: devices.length,
+        successCount: result.successCount,
+        errorCount: result.errorCount
+      });
     }
     
     return NextResponse.json(devices);
   } catch (error) {
-    console.error('Error fetching and storing devices:', error);
+    logger.error(`Error fetching and storing devices: ${error}`, 'platform-api', {
+      platform,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json(
       { error: 'Failed to fetch devices' },
       { status: 500 }

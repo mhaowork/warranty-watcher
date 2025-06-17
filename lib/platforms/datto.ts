@@ -1,6 +1,7 @@
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { logger } from '@/lib/logger';
 
 interface DattoCredentials {
   url?: string;
@@ -82,7 +83,10 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
     // Determine if we should use real API based on whether we have complete credentials
     const useRealApi = Boolean(credentials?.url && credentials?.apiKey && credentials?.secretKey);
 
-    console.log(`Connecting to Datto RMM at ${url} ${!useRealApi ? '(DEMO MODE)' : ''}`);
+    logger.info(`Connecting to Datto RMM at ${url} ${!useRealApi ? '(DEMO MODE)' : ''}`, 'datto-api', {
+      url,
+      mode: useRealApi ? 'api' : 'demo'
+    });
 
     // If using demo mode, return mock data
     if (!useRealApi) {
@@ -174,7 +178,9 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
     const client = await createDattoRMMClient(url, apiKey, secretKey);
     return await fetchDevicesUsingRealAPI(client);
   } catch (error) {
-    console.error('Error fetching devices from Datto RMM:', error);
+    logger.error(`Error fetching devices from Datto RMM: ${error}`, 'datto-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     return [];
   }
 }
@@ -218,25 +224,46 @@ async function createDattoRMMClient(apiUrl: string, apiKey: string, secretKey: s
       if (error.response) {
         switch (error.response.status) {
           case 400:
-            console.error('Bad request:', error.response.data);
+            logger.error('Bad request from Datto API', 'datto-api', {
+              statusCode: 400,
+              responseData: error.response.data
+            });
             throw new Error('Invalid request parameters');
           case 401:
-            console.error('Unauthorized:', error.response.data);
+            logger.error('Unauthorized access to Datto API', 'datto-api', {
+              statusCode: 401,
+              responseData: error.response.data
+            });
             throw new Error('Authentication failed');
           case 403:
-            console.error('Forbidden:', error.response.data);
+            logger.error('Forbidden access to Datto API', 'datto-api', {
+              statusCode: 403,
+              responseData: error.response.data
+            });
             throw new Error('Insufficient permissions');
           case 404:
-            console.error('Not found:', error.response.data);
+            logger.error('Datto API endpoint not found', 'datto-api', {
+              statusCode: 404,
+              responseData: error.response.data
+            });
             throw new Error('Resource not found');
           case 409:
-            console.error('Conflict:', error.response.data);
+            logger.error('Conflict in Datto API request', 'datto-api', {
+              statusCode: 409,
+              responseData: error.response.data
+            });
             throw new Error('Concurrent modification conflict');
           case 500:
-            console.error('Server error:', error.response.data);
+            logger.error('Datto API server error', 'datto-api', {
+              statusCode: error.response.status,
+              responseData: error.response.data
+            });
             throw new Error('Internal server error');
           default:
-            console.error('API error:', error.response.data);
+            logger.error('Datto API error', 'datto-api', {
+              statusCode: error.response.status,
+              responseData: error.response.data
+            });
             throw new Error('API request failed');
         }
       }
@@ -284,7 +311,9 @@ async function getAllDevices(client: AxiosInstance): Promise<DattoDevice[]> {
 
     return devices;
   } catch (error) {
-    console.error('Error fetching Datto RMM devices:', error);
+    logger.error(`Error fetching Datto RMM devices: ${error}`, 'datto-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -297,7 +326,10 @@ async function getDeviceAudit(client: AxiosInstance, deviceUid: string): Promise
     const response = await client.get<DeviceAudit>(`/v2/audit/device/${deviceUid}`);
     return response.data;
   } catch (error) {
-    console.error(`Error fetching Datto RMM device audit for device ${deviceUid}:`, error);
+    logger.error(`Error fetching Datto RMM device audit for device ${deviceUid}: ${error}`, 'datto-api', {
+      deviceUid,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -310,21 +342,32 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
     const devices = await getAllDevices(client);
     const result: Device[] = [];
 
-    console.log(`Processing ${devices.length} devices from Datto RMM...`);
+    logger.info(`Processing ${devices.length} devices from Datto RMM...`, 'datto-api', {
+      deviceCount: devices.length
+    });
 
     // Process each device
     for (const device of devices) {
       try {
         // Skip non-device class items (printers, esxihosts, etc)
         if (device.deviceClass !== 'device') {
-          console.log(`Skipping non-device class item: ${device.hostname} (${device.deviceClass})`);
+          logger.debug(`Skipping non-device class item: ${device.hostname} (${device.deviceClass})`, 'datto-api', {
+            hostname: device.hostname,
+            deviceClass: device.deviceClass
+          });
           continue;
         }
 
-        console.log(`\nProcessing device: ${device.hostname} (ID: ${device.uid})`);
+        logger.debug(`Processing device: ${device.hostname} (ID: ${device.uid})`, 'datto-api', {
+          hostname: device.hostname,
+          deviceUid: device.uid
+        });
         
         // Log warranty date from device object
-        console.log(`Warranty date from Datto RMM: ${device.warrantyDate || 'Not set'}`);
+        logger.debug(`Warranty date from Datto RMM: ${device.warrantyDate || 'Not set'}`, 'datto-api', {
+          hostname: device.hostname,
+          warrantyDate: device.warrantyDate
+        });
         
         const audit = await getDeviceAudit(client, device.uid);
 
@@ -344,10 +387,16 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         // Check for warranty info in device data (primary) or audit data (fallback)
         if (device.warrantyDate) {
           warrantyEndDate = device.warrantyDate;
-          console.log(`Found warranty end date from device data: ${warrantyEndDate}`);
+          logger.debug(`Found warranty end date from device data: ${warrantyEndDate}`, 'datto-api', {
+            hostname: device.hostname,
+            warrantyEndDate
+          });
         } else if (audit.warrantyInfo && audit.warrantyInfo.warrantyEndDate) {
           warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
-          console.log(`Found warranty end date from audit data: ${warrantyEndDate}`);
+          logger.debug(`Found warranty end date from audit data: ${warrantyEndDate}`, 'datto-api', {
+            hostname: device.hostname,
+            warrantyEndDate
+          });
         }
 
         // Map to our normalized Device format
@@ -363,14 +412,20 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
 
         result.push(mappedDevice);
       } catch (error) {
-        console.error(`Error processing device ${device.hostname} (${device.uid}):`, error);
+        logger.error(`Error processing device ${device.hostname} (${device.uid}): ${error}`, 'datto-api', {
+          hostname: device.hostname,
+          deviceUid: device.uid,
+          error: error instanceof Error ? error.message : String(error)
+        });
         // Continue with next device even if this one fails
       }
     }
 
     return result;
   } catch (error) {
-    console.error('Error fetching all Datto RMM devices:', error);
+    logger.error(`Error fetching all Datto RMM devices: ${error}`, 'datto-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -401,13 +456,21 @@ export async function updateDattoWarranty(
     // Determine if we should use real API based on whether we have complete credentials
     const useRealApi = Boolean(credentials?.url && credentials?.apiKey && credentials?.secretKey);
 
-    console.log(`Updating warranty for Datto device ${deviceUid} to ${warrantyEndDate} ${!useRealApi ? '(DEMO MODE)' : ''}`);
+    logger.info(`Updating warranty for Datto device ${deviceUid} to ${warrantyEndDate} ${!useRealApi ? '(DEMO MODE)' : ''}`, 'datto-api', {
+      deviceUid,
+      warrantyEndDate,
+      mode: useRealApi ? 'api' : 'demo'
+    });
 
     // If using demo mode, simulate update
     if (!useRealApi) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`[DEMO] Successfully updated warranty date for device ${deviceUid} to ${warrantyEndDate}`);
+      logger.info(`[DEMO] Successfully updated warranty date for device ${deviceUid} to ${warrantyEndDate}`, 'datto-api', {
+        deviceUid,
+        warrantyEndDate,
+        mode: 'demo'
+      });
       return true;
     }
 
@@ -421,17 +484,29 @@ export async function updateDattoWarranty(
     
     // Check if the update was successful
     if (response.status >= 200 && response.status < 300) {
-      console.log(`Successfully updated warranty expiration date for device ${deviceUid} to ${warrantyEndDate}`);
+      logger.info(`Successfully updated warranty expiration date for device ${deviceUid} to ${warrantyEndDate}`, 'datto-api', {
+        deviceUid,
+        warrantyEndDate
+      });
       return true;
     } else {
-      console.error(`Failed to update warranty for device ${deviceUid}: Unexpected status code ${response.status}`);
+      logger.error(`Failed to update warranty for device ${deviceUid}: Unexpected status code ${response.status}`, 'datto-api', {
+        deviceUid,
+        statusCode: response.status
+      });
       return false;
     }
   } catch (error) {
     if (error instanceof Error) {
-      console.error(`Error updating warranty for device ${deviceUid}:`, error.message);
+      logger.error(`Error updating warranty for device ${deviceUid}: ${error.message}`, 'datto-api', {
+        deviceUid,
+        error: error.message
+      });
     } else {
-      console.error(`Unknown error updating warranty for device ${deviceUid}:`, error);
+      logger.error(`Unknown error updating warranty for device ${deviceUid}: ${error}`, 'datto-api', {
+        deviceUid,
+        error: String(error)
+      });
     }
     return false;
   }

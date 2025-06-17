@@ -2,6 +2,7 @@ import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance } from 'axios';
 import MockAdapter from 'axios-mock-adapter';
+import { logger } from '@/lib/logger';
 
 export interface HaloPSACredentials {
   url: string;
@@ -214,7 +215,10 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
     const clientSecret = credentials?.clientSecret || '';
     const useDemoMode = (credentials === undefined);
     
-    console.log('Creating HaloPSA client at ', baseURL, useDemoMode ? '(Demo Mode)' : '');
+    logger.info(`Creating HaloPSA client at ${baseURL} ${useDemoMode ? '(Demo Mode)' : ''}`, 'halopsa-api', {
+      baseURL,
+      mode: useDemoMode ? 'demo' : 'api'
+    });
     // Create the API client
     const axiosInstance = axios.create({
       baseURL,
@@ -229,7 +233,7 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
       setupMockAdapter(axiosInstance);
     }
     
-    console.log('Authenticating with HaloPSA');
+    logger.info('Authenticating with HaloPSA', 'halopsa-api');
     
     // Prepare the form data for OAuth2 client credentials flow
     const formData = new URLSearchParams();
@@ -240,16 +244,16 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
 
     const authResponse = await axiosInstance.post<HaloPSAAuthResponse>('/auth/token', formData);
 
-    console.log('Authentication response received');
+    logger.debug('Authentication response received', 'halopsa-api');
 
     // Extract the access token from the response
     if (!authResponse.data?.access_token) {
-      console.error('Access token not found in response');
+      logger.error('Access token not found in response', 'halopsa-api');
       throw new Error('Access token not found in authentication response');
     }
 
     const accessToken = authResponse.data.access_token;
-    console.log('Successfully obtained access token');
+    logger.info('Successfully obtained access token', 'halopsa-api');
 
     // Update the headers with the access token for future requests
     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
@@ -257,7 +261,9 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
 
     return axiosInstance;
   } catch (error) {
-    console.error('Error authenticating with HaloPSA:', error);
+    logger.error(`Error authenticating with HaloPSA: ${error}`, 'halopsa-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -267,19 +273,21 @@ async function createHaloPSAClient(credentials?: HaloPSACredentials): Promise<Ax
  */
 async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]> {
   try {
-    console.log('Fetching assets from HaloPSA');
+    logger.info('Fetching assets from HaloPSA', 'halopsa-api');
     
     const response = await client.get<HaloPSAResponse>('/api/asset');
     
-    console.log('API response received');
+    logger.debug('API response received', 'halopsa-api');
     
     if (!response.data?.assets || !Array.isArray(response.data.assets)) {
-      console.error('Unexpected response format');
+      logger.error('Unexpected response format from HaloPSA', 'halopsa-api');
       throw new Error('Unexpected API response format');
     }
     
     const assets = response.data.assets;
-    console.log(`Found ${assets.length} assets in response`);
+    logger.info(`Found ${assets.length} assets in response`, 'halopsa-api', {
+      assetCount: assets.length
+    });
     
     const result: Device[] = [];
     
@@ -319,15 +327,22 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
 
         result.push(mappedDevice);
       } catch (error) {
-        console.error(`Error processing asset ${asset.id}:`, error);
+        logger.error(`Error processing asset ${asset.id}: ${error}`, 'halopsa-api', {
+          assetId: asset.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
         // Continue with next asset even if this one fails
       }
     }
     
-    console.log(`Completed fetching assets. Total devices (with serial number) found: ${result.length}`);
+    logger.info(`Completed fetching assets. Total devices (with serial number) found: ${result.length}`, 'halopsa-api', {
+      totalDevices: result.length
+    });
     return result;
   } catch (error) {
-    console.error('Error fetching HaloPSA assets:', error);
+    logger.error(`Error fetching HaloPSA assets: ${error}`, 'halopsa-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -350,7 +365,10 @@ export async function updateHaloPSAWarranty(
   credentials?: HaloPSACredentials
 ): Promise<boolean> {
   try {
-    console.log(`Updating HaloPSA warranty for device ${deviceId} to ${warrantyEndDate}`);
+    logger.info(`Updating HaloPSA warranty for device ${deviceId} to ${warrantyEndDate}`, 'halopsa-api', {
+      deviceId,
+      warrantyEndDate
+    });
 
     // Authenticate and get client for real API
     const client = await createHaloPSAClient(credentials);
@@ -369,12 +387,17 @@ export async function updateHaloPSAWarranty(
       }
     });
     
-    console.log(`HaloPSA warranty update response:`, response.status);
+    logger.info('HaloPSA warranty update response received', 'halopsa-api', {
+      statusCode: response.status
+    });
     
     // Consider any 2xx status code as success
     return response.status >= 200 && response.status < 300;
   } catch (error) {
-    console.error(`Error updating HaloPSA warranty for device ${deviceId}:`, error);
+    logger.error(`Error updating HaloPSA warranty for device ${deviceId}: ${error}`, 'halopsa-api', {
+      deviceId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return false;
   }
 } 

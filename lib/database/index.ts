@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
-import { logger } from '../logger';
+import { logger } from '@/lib/logger';
 
 // Database path configuration
 const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'data', 'warranty.db');

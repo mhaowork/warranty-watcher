@@ -5,6 +5,7 @@ import { updateDattoWarranty } from '../../../../lib/platforms/datto';
 import { updateNCentralWarranty } from '../../../../lib/platforms/ncentral';
 import { markWarrantyAsWrittenBack } from '../../../../lib/services/warrantySync';
 import { HaloPSACredentials, updateHaloPSAWarranty } from '@/lib/platforms/halopsa';
+import { logger } from '@/lib/logger';
 
 // Define typed credentials for each platform
 type DattoCredentials = {
@@ -36,7 +37,12 @@ export async function POST(request: Request) {
     
     switch (platform) {
       case Platform.DATTO_RMM: {
-        console.log(`Updating device ${deviceId} in Datto RMM with warranty info:`, warranty);
+        logger.info(`Updating device ${deviceId} in Datto RMM with warranty info`, 'update-api', {
+          deviceId,
+          platform,
+          warrantyEndDate: warranty.endDate,
+          serialNumber: warranty.serialNumber
+        });
         const dattoCreds = credentials as DattoCredentials;
         updateSuccess = await updateDattoWarranty(
           deviceId,
@@ -47,7 +53,12 @@ export async function POST(request: Request) {
       }
       
       case Platform.NCENTRAL: {
-        console.log(`Updating device ${deviceId} in N-central with warranty info:`, warranty);
+        logger.info(`Updating device ${deviceId} in N-central with warranty info`, 'update-api', {
+          deviceId,
+          platform,
+          warrantyEndDate: warranty.endDate,
+          serialNumber: warranty.serialNumber
+        });
         const ncentralCreds = credentials as NCentralCredentials;
         updateSuccess = await updateNCentralWarranty(
           deviceId,
@@ -58,7 +69,12 @@ export async function POST(request: Request) {
       }
 
       case Platform.HALOPSA: {
-        console.log(`Updating device ${deviceId} in HaloPSA with warranty info:`, warranty);
+        logger.info(`Updating device ${deviceId} in HaloPSA with warranty info`, 'update-api', {
+          deviceId,
+          platform,
+          warrantyEndDate: warranty.endDate,
+          serialNumber: warranty.serialNumber
+        });
         const haloPSACreds = credentials as HaloPSACredentials;
         updateSuccess = await updateHaloPSAWarranty(
           deviceId,
@@ -84,6 +100,11 @@ export async function POST(request: Request) {
     
     // Mark warranty as written back in database
     await markWarrantyAsWrittenBack(warranty.serialNumber);
+    logger.info(`Successfully updated warranty for device ${deviceId} in ${platform}`, 'update-api', {
+      deviceId,
+      platform,
+      serialNumber: warranty.serialNumber
+    });
     
     // Return success response
     return NextResponse.json({ 
@@ -96,7 +117,11 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    console.error('Error updating warranty information:', error);
+    logger.error(`Error updating warranty information: ${error}`, 'update-api', {
+      deviceId,
+      platform,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json(
       { error: 'Failed to update warranty information in source system' },
       { status: 500 }

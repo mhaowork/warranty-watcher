@@ -1,6 +1,7 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 interface HpWarrantyResponse {
   start_date: string;
@@ -13,7 +14,10 @@ interface HpWarrantyResponse {
 
 // Mock HP data for demos
 async function getMockHpWarrantyInfo(serialNumber: string): Promise<WarrantyInfo> {
-  console.log(`Looking up HP warranty for ${serialNumber} (mock implementation)`);
+  logger.info(`Looking up HP warranty for ${serialNumber} (mock implementation)`, 'hp-api', {
+    serialNumber,
+    mode: 'mock'
+  });
 
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -81,10 +85,18 @@ export async function getHpWarrantyInfo(
   // Check if apiKey is provided
   if (apiKey) {
     const warranty = await fetchHpWarrantyData(serialNumber, apiKey);
-    console.log(`Found HP warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+    logger.info(`Found HP warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`, 'hp-api', {
+      serialNumber,
+      startDate: warranty.startDate,
+      endDate: warranty.endDate,
+      mode: 'api'
+    });
     return warranty;
   } else {
-    console.log('API key is not provided, falling back to mock implementation');
+    logger.info('API key is not provided, falling back to mock implementation', 'hp-api', {
+      serialNumber,
+      mode: 'mock-fallback'
+    });
   }
 
   return getMockHpWarrantyInfo(serialNumber);

@@ -1,6 +1,7 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 // List of Service Level Codes not related to hardware warranties
 const SLC_BLACKLIST = ['D', 'DL', 'PJ', 'PR'];
@@ -68,7 +69,9 @@ async function getDellAuthToken(clientId: string, clientSecret: string): Promise
     
     return dellToken;
   } catch (error) {
-    console.error('Error getting Dell auth token:', error);
+    logger.error(`Error getting Dell auth token: ${error}`, 'dell-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw new Error('Failed to authenticate with Dell API');
   }
 }
@@ -98,7 +101,10 @@ async function fetchDellWarrantyData(
 
   // The API returns an array of devices
   if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-    console.error('Invalid response format from Dell API:', response.data);
+    logger.error('Invalid response format from Dell API', 'dell-api', {
+      serialNumber,
+      responseData: response.data
+    });
     throw new Error('Invalid response format from Dell API - expected array');
   }
 
@@ -154,7 +160,10 @@ async function fetchDellWarrantyData(
 // Mock Dell data for demos
 async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyInfo> {
   try {
-    console.log(`Looking up Dell warranty for ${serialNumber} (mock implementation)`);
+    logger.info(`Looking up Dell warranty for ${serialNumber} (mock implementation)`, 'dell-api', {
+      serialNumber,
+      mode: 'mock'
+    });
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -181,7 +190,11 @@ async function getMockDellWarrantyInfo(serialNumber: string): Promise<WarrantyIn
       ]
     };
   } catch (error) {
-    console.error('Error fetching Dell warranty:', error);
+    logger.error(`Error fetching Dell warranty: ${error}`, 'dell-api', {
+      serialNumber,
+      mode: 'mock',
+      error: error instanceof Error ? error.message : String(error)
+    });
     return {
       serialNumber,
       manufacturer: Manufacturer.DELL,
@@ -199,10 +212,18 @@ export async function getDellWarrantyInfo(
   // Check if both clientId and clientSecret are provided
   if (clientId && clientSecret) {
     const warranty = await fetchDellWarrantyData(serialNumber, clientId, clientSecret);
-    console.log(`Found Dell warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+    logger.info(`Found Dell warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`, 'dell-api', {
+      serialNumber,
+      startDate: warranty.startDate,
+      endDate: warranty.endDate,
+      mode: 'api'
+    });
     return warranty;
   } else {
-    console.log('clientId / clientSecret is not provided, falling back to mock implementation');
+    logger.info('clientId / clientSecret is not provided, falling back to mock implementation', 'dell-api', {
+      serialNumber,
+      mode: 'mock-fallback'
+    });
   }
 
   return getMockDellWarrantyInfo(serialNumber);

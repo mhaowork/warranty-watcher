@@ -15,7 +15,7 @@ import {
   markWarrantyWrittenBack,
 } from '../database';
 import { deviceToWarrantyInfo } from '../utils/deviceUtils';
-import { logger } from '../logger';
+import { logger } from '@/lib/logger';
 
 export interface SyncOptions {
   writeBackToSource: boolean;

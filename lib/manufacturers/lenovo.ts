@@ -1,6 +1,7 @@
 import { Manufacturer } from '../../types/manufacturer';
 import { WarrantyInfo } from '../../types/warranty';
 import axios from 'axios';
+import { logger } from '@/lib/logger';
 
 interface LenovoWarrantyResponse {
   start_date: string;
@@ -13,7 +14,10 @@ interface LenovoWarrantyResponse {
 
 // Mock Lenovo data for demos
 async function getMockLenovoWarrantyInfo(serialNumber: string): Promise<WarrantyInfo> {
-  console.log(`Looking up Lenovo warranty for ${serialNumber} (mock implementation)`);
+  logger.info(`Looking up Lenovo warranty for ${serialNumber} (mock implementation)`, 'lenovo-api', {
+    serialNumber,
+    mode: 'mock'
+  });
 
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -82,10 +86,18 @@ export async function getLenovoWarrantyInfo(
   // Check if apiKey is provided
   if (apiKey) {
     const warranty = await fetchLenovoWarrantyData(serialNumber, apiKey);
-    console.log(`Found Lenovo warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`);
+    logger.info(`Found Lenovo warranty for ${serialNumber}: ${warranty.startDate} to ${warranty.endDate}`, 'lenovo-api', {
+      serialNumber,
+      startDate: warranty.startDate,
+      endDate: warranty.endDate,
+      mode: 'api'
+    });
     return warranty;
   } else {
-    console.log('API key is not provided, falling back to mock implementation');
+    logger.info('API key is not provided, falling back to mock implementation', 'lenovo-api', {
+      serialNumber,
+      mode: 'mock-fallback'
+    });
   }
 
   return getMockLenovoWarrantyInfo(serialNumber);

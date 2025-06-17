@@ -2,6 +2,7 @@ import ImportDevices from '@/components/ImportDevices';
 import SyncWarranties from '@/components/SyncWarranties';
 import { getAllDevices } from '@/lib/database';
 import { Device } from '@/types/device';
+import { logger } from '@/lib/logger';
 
 // Force this page to be dynamic (not statically generated)
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,9 @@ export default async function HomePage() {
     const dbDevices = await getAllDevices();
     initialDevices = dbDevices;
   } catch (error) {
-    console.error('Error loading initial database data:', error);
+    logger.error(`Error loading initial database data: ${error}`, 'homepage', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     // Continue with empty arrays - component will handle gracefully
   }
 

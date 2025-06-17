@@ -1,6 +1,7 @@
 import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance } from 'axios';
+import { logger } from '@/lib/logger';
 import MockAdapter from 'axios-mock-adapter';
 
 interface NCentralCredentials {
@@ -176,7 +177,10 @@ export async function fetchNCentralDevices(credentials?: NCentralCredentials): P
     // Determine if we should use demo mode based on whether credentials are complete
     const useDemoMode = !credentials?.serverUrl || !credentials?.apiToken || apiToken.trim() === '';
     
-    console.log(`Connecting to N-central at ${serverUrl} ${useDemoMode ? '(DEMO MODE)' : ''}`);
+    logger.info(`Connecting to N-central at ${serverUrl} ${useDemoMode ? '(DEMO MODE)' : ''}`, 'ncentral-api', {
+      serverUrl,
+      mode: useDemoMode ? 'demo' : 'api'
+    });
 
     // Create the API client
     const axiosInstance = axios.create({
@@ -217,30 +221,32 @@ export async function fetchNCentralDevices(credentials?: NCentralCredentials): P
 async function createNCentralClient(axiosInstance: AxiosInstance, apiToken: string): Promise<AxiosInstance> {
   // First, authenticate to get access token
   try {
-    console.log('Authenticating with N-central');
+    logger.info('Authenticating with N-central', 'ncentral-api');
     const authResponse = await axiosInstance.post(`/api/auth/authenticate`, {}, {
       headers: {
         'Authorization': `Bearer ${apiToken}`
       }
     });
 
-    console.log('Authentication response received');
+    logger.debug('Authentication response received', 'ncentral-api');
 
     // Extract the access token from the nested response structure
     if (!authResponse.data?.tokens?.access?.token) {
-      console.error('Access token not found in response');
+      logger.error('Access token not found in response', 'ncentral-api');
       throw new Error('Access token not found in authentication response');
     }
 
     const accessToken = authResponse.data.tokens.access.token;
-    console.log('Successfully obtained access token');
+    logger.info('Successfully obtained access token', 'ncentral-api');
 
     // Update the headers with the access token
     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
     return axiosInstance;
   } catch (error) {
-    console.error('Error authenticating with N-central:', error);
+    logger.error(`Error authenticating with N-central: ${error}`, 'ncentral-api', {
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
@@ -251,10 +257,15 @@ async function createNCentralClient(axiosInstance: AxiosInstance, apiToken: stri
 async function getDeviceAsset(client: AxiosInstance, deviceId: string): Promise<DeviceAsset> {
   try {
     const response = await client.get(`/api/devices/${deviceId}/assets`);
-    console.log('Device asset response received: ', response.data);
+    logger.debug('Device asset response received', 'ncentral-api', {
+      responseData: response.data
+    });
     return response.data; // Return full response which contains data property
   } catch (error) {
-    console.error(`Error fetching N-central device asset for device ${deviceId}:`, error);
+    logger.error(`Error fetching N-central device asset for device ${deviceId}: ${error}`, 'ncentral-api', {
+      deviceId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }

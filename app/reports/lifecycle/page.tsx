@@ -7,6 +7,7 @@ import { WarrantyInfo } from '@/types/warranty';
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 // Force this page to be dynamic
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,10 @@ export default async function LifecycleReportPage({ searchParams }: ReportParams
       .map(device => deviceToWarrantyInfo(device));
     
   } catch (error) {
-    console.error('Error loading devices for lifecycle report:', error);
+    logger.error(`Error loading devices for lifecycle report: ${error}`, 'lifecycle-report', {
+      client: selectedClientName,
+      error: error instanceof Error ? error.message : String(error)
+    });
   }
 
   return (

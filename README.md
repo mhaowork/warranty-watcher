@@ -9,9 +9,6 @@ Demo: https://demo.warrantywatcher.com/
 
 View Example Report: [Example Report](public/warranty-watcher-example-report-2025-06-03.pdf)
 
-If you like this project, buy me a coffee at https://github.com/sponsors/mhaowork
-
-
 ## Features
 
 - **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information

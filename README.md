@@ -57,7 +57,27 @@ docker run -p 3000:3000 -v ./data:/app/data -e DB_PATH=/app/data/warranty.db mha
 ```
 Note: your device database will be saved in the `data` folder under your current directory
 
-Access the application at [http://localhost:3000](http://localhost:3000).
+Access the application at [http://localhost:3000](http://localhost:3000)
+
+**Tip: How to upgrade to the latest version**
+
+Find your container ID
+```bash
+docker ps
+```
+
+Stop and remove the container
+```bash
+docker stop CONTAINER_ID && docker rm CONTAINER_ID
+```
+
+Pull the latest image
+```bash
+docker pull mhaowork/warrantywatcher:latest
+```
+
+Then you can execute the `docker run` command again.
+
 
 #### Option 2: Build from Source
 ```bash
@@ -65,6 +85,8 @@ git clone https://github.com/mhaowork/warranty-watcher.git
 cd warranty-watcher
 docker-compose up -d
 ```
+
+Then you can run the latest image.
 
 ### Development Setup (Ignore this unless you want to change the code Or don't want to use Docker)
 

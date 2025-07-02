@@ -1,5 +1,5 @@
 import { Device } from '../../types/device';
-import { Manufacturer } from '../../types/manufacturer';
+import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 
 // This would be a client-side function to parse CSV file
 export function parseCSVData(csvData: string): Device[] {
@@ -37,22 +37,9 @@ export function parseCSVData(csvData: string): Device[] {
           case 'manufacturer':
           case 'vendor':
           case 'make':
-            // Improved manufacturer detection with more variants
-            const lowerValue = value.toLowerCase();
-            if (lowerValue.includes('dell')) {
-              device.manufacturer = Manufacturer.DELL;
-            } else if (lowerValue.includes('hp') || lowerValue.includes('hewlett') || lowerValue.includes('packard')) {
-              device.manufacturer = Manufacturer.HP;
-            } else if (lowerValue.includes('lenovo') || lowerValue.includes('thinkpad')) {
-              device.manufacturer = Manufacturer.LENOVO;
-            } else if (lowerValue.includes('apple') || lowerValue.includes('mac')) {
-              device.manufacturer = Manufacturer.APPLE;
-            } else if (lowerValue.includes('microsoft') || lowerValue.includes('surface')) {
-              device.manufacturer = Manufacturer.MICROSOFT;
-            } else if (value) {
-              // If there's a value but not recognized, we'll default to DELL
-              // This can be changed based on business requirements
-              device.manufacturer = Manufacturer.DELL; 
+            // Use shared manufacturer determination utility
+            if (value) {
+              device.manufacturer = determineManufacturer(value);
             }
             break;
           case 'model':

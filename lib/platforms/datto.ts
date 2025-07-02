@@ -2,6 +2,7 @@ import { Device } from '../../types/device';
 import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { logger } from '@/lib/logger';
+import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 
 interface DattoCredentials {
   url?: string;
@@ -424,15 +425,9 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         // Add delay to respect rate limits
         await new Promise(resolve => setTimeout(resolve, auditDelayMs));
 
-        // Determine manufacturer enum
-        let manufacturer = Manufacturer.DELL;
-        const mfgName = (audit.systemInfo.manufacturer || '').toLowerCase();
-
-        if (mfgName.includes('dell')) {
-          manufacturer = Manufacturer.DELL;
-        } else if (mfgName.includes('hp') || mfgName.includes('hewlett')) {
-          manufacturer = Manufacturer.HP;
-        }
+        // Determine manufacturer enum using shared utility
+        const mfgName = audit.systemInfo.manufacturer || '';
+        const manufacturer = determineManufacturer(mfgName);
 
         // Check for warranty information from Datto RMM
         let warrantyEndDate: string | undefined = undefined;

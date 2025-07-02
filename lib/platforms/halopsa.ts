@@ -1,5 +1,6 @@
-import { Device } from '../../types/device';
-import { Manufacturer } from '../../types/manufacturer';
+import { Device } from '@/types/device';
+import { Manufacturer } from '@/types/manufacturer';
+import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 import axios, { AxiosInstance } from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import { logger } from '@/lib/logger';
@@ -97,32 +98,32 @@ const mockAssets: HaloPSAAsset[] = [
 /**
  * Helper function to determine manufacturer based on asset info
  * Uses the key_field which contains the model information like "Lenovo ThinkStation P500"
- * TODO: Consolidate determineManufacturer with ncentral.ts & datto.ts
+ * Now uses shared utility function from manufacturerUtils
  */
-function determineManufacturer(keyField: string, assetTypeName?: string, inventoryNumber?: string): Manufacturer {
-  const keyFieldNormalized = (keyField || '').toLowerCase();
-  const assetTypeNormalized = (assetTypeName || '').toLowerCase();
-  const inventoryNormalized = (inventoryNumber || '').toLowerCase();
-
+function determineManufacturerForHaloPSA(keyField: string, assetTypeName?: string, inventoryNumber?: string): Manufacturer {
   // Primary: Check key_field first (most likely to contain manufacturer info)
-  if (keyFieldNormalized.includes('dell')) {
-    return Manufacturer.DELL;
-  } else if (keyFieldNormalized.includes('hp') || 
-    keyFieldNormalized.includes('hewlett')) {
-    return Manufacturer.HP;
-  } else if (keyFieldNormalized.includes('lenovo')) {
-    return Manufacturer.LENOVO;
+  if (keyField) {
+    const primaryResult = determineManufacturer(keyField, Manufacturer.DELL);
+    // If we got a non-default result, use it
+    if (primaryResult !== Manufacturer.DELL || keyField.toLowerCase().includes('dell')) {
+      return primaryResult;
+    }
   }
 
-  // Fallback: Try to infer from asset type name or inventory number
-  if (assetTypeNormalized.includes('dell') || inventoryNormalized.includes('dell')) {
-    return Manufacturer.DELL;
-  } else if (assetTypeNormalized.includes('hp') || 
-    assetTypeNormalized.includes('hewlett') ||
-    inventoryNormalized.includes('hp')) {
-    return Manufacturer.HP;
-  } else if (assetTypeNormalized.includes('lenovo') || inventoryNormalized.includes('lenovo')) {
-    return Manufacturer.LENOVO;
+  // Fallback: Try to infer from asset type name
+  if (assetTypeName) {
+    const assetTypeResult = determineManufacturer(assetTypeName, Manufacturer.DELL);
+    if (assetTypeResult !== Manufacturer.DELL || assetTypeName.toLowerCase().includes('dell')) {
+      return assetTypeResult;
+    }
+  }
+
+  // Final fallback: Try inventory number
+  if (inventoryNumber) {
+    const inventoryResult = determineManufacturer(inventoryNumber, Manufacturer.DELL);
+    if (inventoryResult !== Manufacturer.DELL || inventoryNumber.toLowerCase().includes('dell')) {
+      return inventoryResult;
+    }
   }
 
   // Default to DELL if unknown
@@ -306,7 +307,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         }
         
         // Determine manufacturer and model from available data
-        const manufacturer = determineManufacturer(asset.key_field, asset.assettype_name, asset.inventory_number);
+        const manufacturer = determineManufacturerForHaloPSA(asset.key_field, asset.assettype_name, asset.inventory_number);
         const model = asset.key_field;
         const serialNumber = asset.key_field2.trim();
         const warrantyStartDate = asset.warranty_start ? asset.warranty_start.split('T')[0] : undefined;

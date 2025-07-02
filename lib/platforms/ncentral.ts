@@ -3,6 +3,7 @@ import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance } from 'axios';
 import { logger } from '@/lib/logger';
 import MockAdapter from 'axios-mock-adapter';
+import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 
 interface NCentralCredentials {
   serverUrl?: string;
@@ -77,23 +78,7 @@ const mockDevices = [
   }
 ];
 
-/**
- * Helper function to determine manufacturer based on system info
- */
-function determineManufacturer(mfgName: string): Manufacturer {
-  const normalized = mfgName.toLowerCase();
 
-  if (normalized.includes('dell')) {
-    return Manufacturer.DELL;
-  } else if (normalized.includes('hp') ||
-    normalized.includes('hewlett') ||
-    normalized.includes('packard')) {
-    return Manufacturer.HP;
-  }
-
-  // Default to DELL if unknown
-  return Manufacturer.DELL;
-}
 
 /**
  * Sets up axios mock adapter for demo mode

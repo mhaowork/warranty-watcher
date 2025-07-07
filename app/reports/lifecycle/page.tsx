@@ -1,4 +1,4 @@
-import { getAllDevices, getUniqueClientNames, getDeviceCountByClient, getDevicesByClientName } from '@/lib/database';
+import { getAllDevices, getUniqueClientNames, getDeviceCountByClient, getDevicesByClientName } from '@/lib/database/service';
 import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 import LifecycleReport from '@/components/LifecycleReport';
 import ClientSelector from '@/components/ClientSelector';

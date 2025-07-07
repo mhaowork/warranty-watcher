@@ -13,7 +13,7 @@ import {
   getDeviceBySerial, 
   updateDeviceWarranty,
   markWarrantyWrittenBack,
-} from '../database';
+} from '../database/service';
 import { deviceToWarrantyInfo } from '../utils/deviceUtils';
 import { logger } from '@/lib/logger';
 

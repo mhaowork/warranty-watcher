@@ -1,6 +1,6 @@
 import { Device } from '../types/device';
 import { Manufacturer } from '../types/manufacturer';
-import { insertOrUpdateDevice } from '../lib/database';
+import { insertOrUpdateDevice } from '../lib/database/service';
 
 // Configuration
 const TOTAL_DEVICES = 5000;

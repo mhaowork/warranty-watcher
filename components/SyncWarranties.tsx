@@ -9,7 +9,6 @@ import { WarrantyInfo } from '@/types/warranty';
 import { getPlatformCredentials } from '@/lib/storage';
 import { deviceToWarrantyInfo } from '@/lib/utils/deviceUtils';
 import { lookupWarrantiesForDevices } from '@/lib/services/warrantyLookup';
-import { deleteDeviceById } from '@/lib/database';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Checkbox } from './ui/checkbox';
@@ -18,6 +17,7 @@ import { Label } from './ui/label';
 import WarrantyResults from './WarrantyResults';
 import ClientSelector from './ClientSelector';
 import { inferWarrantyStatus } from '@/lib/utils/warrantyUtils';
+import { deleteDeviceById } from '@/lib/database/service';
 
 interface SyncWarrantiesProps {
   devices: Device[];
@@ -117,8 +117,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
       }
 
       try {
-        await deleteDeviceById(device.id); // Call action for a single device
-
+        await deleteDeviceById(device.id);
 
         SucceededCount++;
         // Remove from local results if successfully deleted

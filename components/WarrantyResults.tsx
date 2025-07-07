@@ -34,7 +34,6 @@ export default function WarrantyResults({ data, selectedClient }: WarrantyResult
   const [search, setSearch] = useQueryState('search', { defaultValue: '' });
   const [page, setPage] = useQueryState('page', { defaultValue: 1, parse: Number });
   const [pageSize, setPageSize] = useQueryState('pageSize', { defaultValue: 50, parse: Number });
-  console.log(data, typeof data[0].endDate); // @no-commit
 
   // Filter data based on search
   const filteredData = useMemo(() => {

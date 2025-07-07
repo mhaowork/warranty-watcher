@@ -44,4 +44,6 @@
   - Use "@" when importing. Do not be like `import { XYZ } from "../../../../../../types/platform"`
   
   Follow Next.js docs for Data Fetching, Rendering, and Routing.
+
+  Use logger instead of console.log()
   

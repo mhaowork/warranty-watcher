@@ -267,7 +267,6 @@ export class SQLiteAdapter implements DatabaseAdapter {
     
     const query = 'SELECT * FROM devices ORDER BY updated_at DESC';
     const rows = await this.runQuery<DeviceRow>(query);
-    console.log(rows); // @no-commit
     return rows.map(row => mapRowToDevice(row));
   }
 

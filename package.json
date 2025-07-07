@@ -23,6 +23,7 @@
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.9",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@stripe/stripe-js": "^7.4.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.48.1",
     "axios": "^1.9.0",
@@ -39,6 +40,7 @@
     "react-hook-form": "^7.56.1",
     "server-only": "^0.0.1",
     "sqlite3": "^5.1.7",
+    "stripe": "^18.3.0",
     "tailwind-merge": "^3.2.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"

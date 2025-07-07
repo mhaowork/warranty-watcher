@@ -25,7 +25,6 @@ export interface AppConfig {
 function getDeploymentMode(): DeploymentMode {
   // Use NEXT_PUBLIC_ prefix for client-side availability
   const mode = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE || 'self-hosted';
-  console.log('Getting deployment mode', mode);
   if (mode !== 'self-hosted' && mode !== 'saas') {
     console.warn(`Invalid DEPLOYMENT_MODE: ${mode}. Defaulting to 'self-hosted'`);
     return 'self-hosted';

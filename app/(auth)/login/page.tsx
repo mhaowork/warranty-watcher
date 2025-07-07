@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import { getCurrentUserClient } from '@/lib/supabase/client-auth';
 import { isSaaSMode } from '@/lib/config';
+import { logger } from '@/lib/logger';
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -31,12 +32,10 @@ export default function LoginPage() {
 
     // Redirect to main page if not in SaaS mode
     if (!isSaaSMode()) {
-      console.log('Not in SaaS mode, redirecting to main page');
       router.push('/');
       return;
     }
 
-    console.log('Checking auth');
     // Check if user is already authenticated
     async function checkAuth() {
       try {
@@ -45,10 +44,10 @@ export default function LoginPage() {
           router.push('/'); // User is already logged in, redirect to main page
           return;
         }
-        console.log('User not authenticated');
+        logger.info('User not authenticated');
       } catch (error) {
         // Error checking auth, continue to show login form
-        console.error('Error checking authentication:', error);
+        logger.error('Error checking authentication:', error);
       } finally {
         setIsLoading(false);
       }

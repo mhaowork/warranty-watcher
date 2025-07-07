@@ -109,14 +109,23 @@ export default function UserProfile() {
               </p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-          >
-            {isSigningOut ? 'Signing out...' : 'Sign Out'}
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => router.push('/billing')}
+            >
+              Billing
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+            >
+              {isSigningOut ? 'Signing out...' : 'Sign Out'}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

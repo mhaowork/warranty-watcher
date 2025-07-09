@@ -18,6 +18,24 @@ export default function LoginForm({ oauthError }: LoginFormProps) {
   // Use OAuth error if provided, otherwise use local error
   const displayError = oauthError || error;
 
+  // Function to get user-friendly error messages
+  function getErrorMessage(errorType: string): string {
+    switch (errorType) {
+      case 'email_permission_error':
+        return 'Unable to access your email address. This often happens with company accounts that have restricted permissions. Contact your IT administrator.';
+      case 'tenant_access_error':
+        return 'Your account does not have access to this application. Please contact your administrator or try with a different account.';
+      case 'access_denied':
+        return 'Access was denied. Please try again or contact support if the problem persists.';
+      case 'server_error':
+        return 'A server error occurred during sign-in. This may be due to account restrictions. Please try again or use a different account.';
+      case 'oauth_error':
+        return 'An authentication error occurred. Please try again.';
+      default:
+        return errorType;
+    }
+  }
+
   async function handleMicrosoftSignIn() {
     setIsLoading(true);
     setError(null);
@@ -54,7 +72,7 @@ export default function LoginForm({ oauthError }: LoginFormProps) {
         <div className="space-y-4">
           {displayError && (
             <Alert variant="destructive">
-              <AlertDescription>{displayError}</AlertDescription>
+              <AlertDescription>{getErrorMessage(displayError)}</AlertDescription>
             </Alert>
           )}
           

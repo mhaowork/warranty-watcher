@@ -22,8 +22,18 @@ export default function LoginPage() {
     // Check for OAuth error in URL
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error');
+    const errorDetails = urlParams.get('error_details');
+    
     if (error) {
-      setOauthError(decodeURIComponent(error));
+      setOauthError(error); // Pass the error type to LoginForm for user-friendly message
+      
+      // Log the detailed error for debugging
+      if (errorDetails) {
+        logger.error('OAuth login failed with details', 'auth', {
+          errorType: error,
+          errorDetails: decodeURIComponent(errorDetails)
+        });
+      }
     }
   }, []);
 

@@ -30,7 +30,12 @@ export async function signInWithMicrosoft() {
     provider: 'azure',
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
-      scopes: 'openid email profile',
+      // Include additional scopes for better enterprise account compatibility
+      scopes: 'openid email profile User.Read offline_access',
+      // Add additional parameters for enterprise compatibility
+      queryParams: {
+        prompt: 'select_account', // Allow users to choose which account to use
+      },
     },
   });
 

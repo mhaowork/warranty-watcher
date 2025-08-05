@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Device } from '../../../../types/device';
-import { Platform } from '../../../../types/platform';
 import { storeDevicesInPool } from '../../../../lib/services/warrantySync';
 import { logger } from '@/lib/logger';
 
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Store devices in database using unified ingestion
-    const result = await storeDevicesInPool(devices, Platform.CSV);
+    const result = await storeDevicesInPool(devices);
     logger.info(`Stored ${result.successCount} of ${devices.length} devices from CSV in database`, 'csv-api', {
       totalDevices: devices.length,
       successCount: result.successCount,

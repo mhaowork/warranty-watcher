@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     
     // Store devices in database for caching and tracking
     if (devices && devices.length > 0) {
-      const result = await storeDevicesInPool(devices, platform);
+      const result = await storeDevicesInPool(devices);
       logger.info(`Stored ${result.successCount} of ${devices.length} devices from ${platform} in database`, 'platform-api', {
         platform,
         totalDevices: devices.length,

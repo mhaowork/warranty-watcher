@@ -4,6 +4,7 @@ import axios, { AxiosInstance } from 'axios';
 import { logger } from '@/lib/logger';
 import MockAdapter from 'axios-mock-adapter';
 import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
+import { Platform } from '@/types/platform';
 
 interface NCentralCredentials {
   serverUrl?: string;
@@ -320,6 +321,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
             // Map to our normalized Device format with just the essential fields for warranty lookup
             const mappedDevice: Device = {
               sourceDeviceId: assetData.data.device?.deviceid || ncentralDevice.deviceId,
+              sourcePlatform: Platform.NCENTRAL,
               serialNumber: assetData.data.computersystem?.serialnumber || '',
               manufacturer: manufacturer,
               model: assetData.data.computersystem?.model || '',

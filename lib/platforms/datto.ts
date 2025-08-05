@@ -3,6 +3,7 @@ import { Manufacturer } from '../../types/manufacturer';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { logger } from '@/lib/logger';
 import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
+import { Platform } from '@/types/platform';
 
 interface DattoCredentials {
   url?: string;
@@ -450,6 +451,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         // Map to our normalized Device format
         const mappedDevice: Device = {
           sourceDeviceId: dattoDevice.uid,
+          sourcePlatform: Platform.DATTO_RMM,
           serialNumber: audit.bios.serialNumber || '',
           manufacturer: manufacturer,
           model: audit.systemInfo.model || '',

@@ -4,6 +4,7 @@ import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 import axios, { AxiosInstance } from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import { logger } from '@/lib/logger';
+import { Platform } from '@/types/platform';
 
 export interface HaloPSACredentials {
   url: string;
@@ -315,7 +316,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         
         // Map to our normalized Device format
         const mappedDevice: Device = {
-          id: asset.id.toString(),
+          sourceDeviceId: asset.id.toString(),
+          sourcePlatform: Platform.HALOPSA,
           serialNumber: serialNumber,
           manufacturer: manufacturer,
           model: model,

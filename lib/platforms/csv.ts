@@ -1,3 +1,4 @@
+import { Platform } from '@/types/platform';
 import { Device } from '../../types/device';
 import { determineManufacturer } from '@/lib/utils/manufacturerUtils';
 
@@ -18,7 +19,9 @@ export function parseCSVData(csvData: string): Device[] {
     // Skip empty lines
     if (values.length <= 1) continue;
     
-    const device: Partial<Device> = {};
+    const device: Partial<Device> = {
+      sourcePlatform: Platform.CSV,
+    };
     
     // Map CSV columns to device properties
     headers.forEach((header, index) => {

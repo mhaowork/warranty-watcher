@@ -221,7 +221,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
 
   async function handleWriteBackWarranties() {
     const itemsToWriteBack = results.filter(
-      r => !r.error && !r.skipped && !r.fromCache && !r.writtenBack && r.serialNumber && r.endDate // Ensure warranty was fetched and has an end date
+      r => !r.error && !r.skipped && r.serialNumber && r.endDate // Ensure warranty was fetched and has an end date
     );
 
     if (itemsToWriteBack.length === 0) {
@@ -237,10 +237,10 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
 
     for (let i = 0; i < itemsToWriteBack.length; i++) {
       const resultInfo = itemsToWriteBack[i];
-      // Find the original device from the `devices` prop to get its ID and accurate sourcePlatform
+      // Find the original device from the `devices` prop to get its source deviceID and accurate sourcePlatform
       const originalDevice = devices.find(d => d.serialNumber === resultInfo.serialNumber);
 
-      if (originalDevice && originalDevice.id && originalDevice.sourcePlatform && originalDevice.sourcePlatform !== Platform.CSV) {
+      if (originalDevice && originalDevice.sourceDeviceId && originalDevice.sourcePlatform && originalDevice.sourcePlatform !== Platform.CSV) {
         logger.info(`Attempting to write back warranty for ${resultInfo.serialNumber} to ${originalDevice.sourcePlatform}`, 'sync-warranties', {
           serialNumber: resultInfo.serialNumber,
           platform: originalDevice.sourcePlatform

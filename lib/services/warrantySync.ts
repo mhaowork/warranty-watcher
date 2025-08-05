@@ -2,7 +2,6 @@
 
 import { Device } from '../../types/device';
 import { WarrantyInfo } from '../../types/warranty';
-import { Platform } from '../../types/platform';
 import { Manufacturer } from '../../types/manufacturer';
 import { ManufacturerCredentials } from '../../types/credentials';
 import { getDellWarrantyInfo } from '../manufacturers/dell';
@@ -37,9 +36,8 @@ export interface SyncResult {
  */
 export async function storeDevicesInPool(
   devices: Device[], 
-  sourcePlatform: Platform
 ): Promise<{ successCount: number; errorCount: number }> {
-  logger.info(`Storing ${devices.length} devices from ${sourcePlatform} in database...`, 'warranty-sync');
+  logger.info(`Storing ${devices.length} devices in database...`, 'warranty-sync');
   
   let successCount = 0;
   let errorCount = 0;
@@ -62,12 +60,10 @@ export async function storeDevicesInPool(
       logger.debug(`Stored device: ${device.serialNumber}`, 'warranty-sync', { 
         serialNumber: device.serialNumber,
         manufacturer: device.manufacturer,
-        sourcePlatform 
       });
     } catch (error) {
-      logger.error(`Error storing device ${device.serialNumber} from ${sourcePlatform}: ${error}`, 'warranty-sync', {
+      logger.error(`Error storing device ${device.serialNumber}: ${error}`, 'warranty-sync', {
         serialNumber: device.serialNumber,
-        sourcePlatform,
         error: error instanceof Error ? error.message : String(error)
       });
       errorCount++;
@@ -75,10 +71,9 @@ export async function storeDevicesInPool(
     }
   }
   
-  logger.info(`Successfully stored ${successCount} devices from ${sourcePlatform}. Errors: ${errorCount}`, 'warranty-sync', {
+  logger.info(`Successfully stored ${successCount} devices. Errors: ${errorCount}`, 'warranty-sync', {
     successCount,
     errorCount,
-    sourcePlatform
   });
   return { successCount, errorCount };
 }

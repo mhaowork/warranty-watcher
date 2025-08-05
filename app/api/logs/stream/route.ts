@@ -1,8 +1,25 @@
 import { logger, LogEntry } from '@/lib/logger';
+import { isSaaSMode } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  // Disable log streaming in SaaS mode for security reasons
+  // In SaaS mode, the global logger contains logs from all users
+  if (isSaaSMode()) {
+    return new Response(
+      JSON.stringify({ 
+        error: 'Log streaming is disabled in SaaS mode for security reasons' 
+      }), 
+      { 
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+
   // Create a readable stream for Server-Sent Events
   const stream = new ReadableStream({
     start(controller) {

@@ -5,6 +5,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import './globals.css';
 import { Button } from '../components/ui/button';
 import ClientFooter from '../components/ClientFooter';
+import { isSaaSMode } from '@/lib/config';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,16 +43,20 @@ export default function RootLayout({
                       <Button variant="ghost">Reports</Button>
                     </Link>
                   </li>
-                  <li>
-                    <Link href="/logs">
-                      <Button variant="ghost">Logs</Button>
-                    </Link>
-                  </li>
+                  {!isSaaSMode() && (
+                    <li>
+                      <Link href="/logs">
+                        <Button variant="ghost">Logs</Button>
+                      </Link>
+                    </li>
+                  )}
+                  {isSaaSMode() && (
                   <li>
                     <Link href="/billing">
                       <Button variant="ghost">Billing</Button>
                     </Link>
-                  </li>
+                    </li>
+                  )}
                 </ul>
               </nav>
             </div>

@@ -141,8 +141,7 @@ export async function checkPlanLimits(action: 'add_device' | 'add_client'): Prom
  * Create Stripe checkout session for subscription upgrade
  */
 export async function createSubscriptionCheckout(
-  plan: SubscriptionPlan,
-  isYearly: boolean = false
+  plan: SubscriptionPlan
 ): Promise<string> {
   if (!isSaaSMode()) {
     throw new Error('Subscriptions are only available in SaaS mode');
@@ -154,7 +153,7 @@ export async function createSubscriptionCheckout(
   }
 
   const planConfig = getPlan(plan);
-  const priceId = isYearly ? planConfig.stripeYearlyPriceId : planConfig.stripePriceId;
+  const priceId = planConfig.stripePriceId;
 
   if (!priceId) {
     throw new Error(`Price ID not configured for plan: ${plan}`);
@@ -210,7 +209,7 @@ export async function getSubscriptionOverview() {
 
   const planConfig = getPlan(subscription.plan);
   const limits = getPlanLimits(subscription.plan);
-  const limitCheck = isWithinPlanLimits(subscription.plan, {
+  const withinLimits = isWithinPlanLimits(subscription.plan, {
     deviceCount: usage.deviceCount,
     clientCount: usage.clientCount,
   });
@@ -220,7 +219,6 @@ export async function getSubscriptionOverview() {
     usage,
     planConfig,
     limits,
-    withinLimits: limitCheck.withinLimits,
-    violations: limitCheck.violations,
+    withinLimits,
   };
 } 

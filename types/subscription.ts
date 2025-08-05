@@ -18,9 +18,7 @@ export interface SubscriptionPlanConfig {
   name: string;
   description: string;
   price: number; // Monthly price in cents
-  yearlyPrice?: number; // Yearly price in cents (optional discount)
   stripePriceId: string; // Stripe Price ID
-  stripeYearlyPriceId?: string; // Stripe Yearly Price ID
   features: PlanFeatures;
 }
 

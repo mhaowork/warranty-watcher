@@ -26,9 +26,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
     name: 'Pro',
     description: 'For growing MSPs managing multiple clients',
     price: 7500, // $75/month in cents
-    yearlyPrice: 75000, // $750/year ($62.50/month) - 15% discount
     stripePriceId: process.env.STRIPE_PRO_PRICE_ID || '',
-    stripeYearlyPriceId: process.env.STRIPE_PRO_YEARLY_PRICE_ID || '',
     features: {
       maxDevices: 5000,
       maxClients: 100,
@@ -44,9 +42,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
     name: 'Enterprise',
     description: 'For large MSPs with advanced needs',
     price: 20000, // $200/month in cents
-    yearlyPrice: 200000, // $2000/year ($166.67/month) - 20% discount
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || '',
-    stripeYearlyPriceId: process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID || '',
     features: {
       maxDevices: 100000,
       maxClients: 1000,
@@ -74,20 +70,10 @@ export function getAllPlans(): SubscriptionPlanConfig[] {
 }
 
 /**
- * Check if a plan supports a specific feature
- */
-export function planSupportsFeature(
-  planId: SubscriptionPlan,
-  feature: keyof SubscriptionPlanConfig['features']
-): boolean {
-  return SUBSCRIPTION_PLANS[planId].features[feature] as boolean;
-}
-
-/**
- * Get usage limits for a plan
+ * Get plan limits for usage validation
  */
 export function getPlanLimits(planId: SubscriptionPlan) {
-  const plan = SUBSCRIPTION_PLANS[planId];
+  const plan = getPlan(planId);
   return {
     maxDevices: plan.features.maxDevices,
     maxClients: plan.features.maxClients,
@@ -100,47 +86,15 @@ export function getPlanLimits(planId: SubscriptionPlan) {
 export function isWithinPlanLimits(
   planId: SubscriptionPlan,
   usage: { deviceCount: number; clientCount: number }
-): { withinLimits: boolean; violations: string[] } {
+): boolean {
   const limits = getPlanLimits(planId);
-  const violations: string[] = [];
-
-  if (usage.deviceCount > limits.maxDevices) {
-    violations.push(`Device count (${usage.deviceCount}) exceeds plan limit (${limits.maxDevices})`);
-  }
-
-  if (usage.clientCount > limits.maxClients) {
-    violations.push(`Client count (${usage.clientCount}) exceeds plan limit (${limits.maxClients})`);
-  }
-
-  return {
-    withinLimits: violations.length === 0,
-    violations,
-  };
+  return usage.deviceCount <= limits.maxDevices && usage.clientCount <= limits.maxClients;
 }
+
 
 /**
  * Format price for display
  */
 export function formatPrice(priceInCents: number): string {
   return `$${(priceInCents / 100).toFixed(0)}`;
-}
-
-/**
- * Calculate yearly savings
- */
-export function calculateYearlySavings(plan: SubscriptionPlanConfig): number {
-  if (!plan.yearlyPrice) return 0;
-  const monthlyTotal = plan.price * 12;
-  return monthlyTotal - plan.yearlyPrice;
-}
-
-/**
- * Format yearly savings as percentage
- */
-export function formatYearlySavingsPercentage(plan: SubscriptionPlanConfig): string {
-  if (!plan.yearlyPrice) return '0%';
-  const monthlyTotal = plan.price * 12;
-  const savings = monthlyTotal - plan.yearlyPrice;
-  const percentage = Math.round((savings / monthlyTotal) * 100);
-  return `${percentage}%`;
 } 

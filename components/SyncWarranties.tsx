@@ -251,7 +251,7 @@ export default function SyncWarranties({ devices }: SyncWarrantiesProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               platform: originalDevice.sourcePlatform,
-              deviceId: originalDevice.id, // Use original device ID from DB
+              deviceId: originalDevice.sourceDeviceId || originalDevice.id, // Use device ID from DB as fallback: we used to use the id field as the sourceDeviceId
               warrantyInfo: {
                 serialNumber: resultInfo.serialNumber,
                 manufacturer: resultInfo.manufacturer,

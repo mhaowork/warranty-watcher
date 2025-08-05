@@ -97,14 +97,14 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
       // Return mock data
       return [
         {
-          id: 'dev-1',
+          sourceDeviceId: 'dev-1',
           serialNumber: 'DELL00123456',
           manufacturer: Manufacturer.DELL,
           model: 'Latitude 5420 (mock data)',
           hostname: 'DESKTOP-ABCDE1'
         },
         {
-          id: 'dev-2',
+          sourceDeviceId: 'dev-2',
           serialNumber: 'HP00789012',
           manufacturer: Manufacturer.HP,
           model: 'EliteBook 840 G8 (mock data)',
@@ -113,14 +113,14 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           warrantyEndDate: '2025-01-15'
         },
         {
-          id: 'dev-3',
+          sourceDeviceId: 'dev-3',
           serialNumber: 'DELL00345678',
           manufacturer: Manufacturer.DELL,
           model: 'OptiPlex 7080 (mock data)',
           hostname: 'DESKTOP-KLMNO3'
         },
         {
-          id: 'dev-4',
+          sourceDeviceId: 'dev-4',
           serialNumber: 'HP00901234',
           manufacturer: Manufacturer.HP,
           model: 'ProBook 450 G8 (mock data)',
@@ -129,42 +129,42 @@ export async function fetchDattoDevices(credentials?: DattoCredentials): Promise
           warrantyEndDate: '2023-03-10'
         },
         {
-          id: 'dev-5',
+          sourceDeviceId: 'dev-5',
           serialNumber: 'LR0394B2',
           manufacturer: Manufacturer.LENOVO,
           model: 'ThinkPad X1 Carbon (mock data)',
           hostname: 'LAPTOP-UVWXY5'
         },
         {
-          id: 'dev-6',
+          sourceDeviceId: 'dev-6',
           serialNumber: 'R9NOY12',
           manufacturer: Manufacturer.LENOVO,
           model: 'ThinkPad P1 (mock data)',
           hostname: 'LAPTOP-ZABCD6'
         },
         {
-          id: 'dev-7',
+          sourceDeviceId: 'dev-7',
           serialNumber: 'DELL00789012',
           manufacturer: Manufacturer.DELL,
           model: 'Precision 5550 (mock data)',
           hostname: 'WORKSTATION-EFGHI7'
         },
         {
-          id: 'dev-8',
+          sourceDeviceId: 'dev-8',
           serialNumber: 'HP00345678',
           manufacturer: Manufacturer.HP,
           model: 'ZBook Studio G7 (mock data)',
           hostname: 'WORKSTATION-JKLMN8'
         },
         {
-          id: 'dev-9',
+          sourceDeviceId: 'dev-9',
           serialNumber: 'MP1DU39T',
           manufacturer: Manufacturer.LENOVO,
           model: 'ThinkPad T14 (mock data)',
           hostname: 'LAPTOP-OPQRS9'
         },
         {
-          id: 'dev-10',
+          sourceDeviceId: 'dev-10',
           serialNumber: 'PF2BXTWK',
           manufacturer: Manufacturer.LENOVO,
           model: 'ThinkCentre M70q',
@@ -371,7 +371,7 @@ async function getDeviceAudit(client: AxiosInstance, deviceUid: string): Promise
  */
 async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]> {
   try {
-    const devices = await getAllDevices(client);
+    const dattoDevices = await getAllDevices(client);
     const result: Device[] = [];
     
     // Rate limiting configuration - keeps us under 600 requests/60 seconds
@@ -379,46 +379,46 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
     const auditDelayMs = 150; // ~6.7 requests/second with safety buffer
     let processedCount = 0;
 
-    logger.info(`Processing ${devices.length} devices from Datto RMM...`, 'datto-api', {
-      deviceCount: devices.length,
-      estimatedTimeMinutes: Math.round((devices.length * auditDelayMs) / 60000 * 10) / 10,
+    logger.info(`Processing ${dattoDevices.length} devices from Datto RMM...`, 'datto-api', {
+      deviceCount: dattoDevices.length,
+      estimatedTimeMinutes: Math.round((dattoDevices.length * auditDelayMs) / 60000 * 10) / 10,
       auditDelayMs
     });
 
     // Process each device
-    for (const device of devices) {
+    for (const dattoDevice of dattoDevices) {
       try {
         // Skip non-device class items (printers, esxihosts, etc)
-        if (device.deviceClass !== 'device') {
-          logger.debug(`Skipping non-device class item: ${device.hostname} (${device.deviceClass})`, 'datto-api', {
-            hostname: device.hostname,
-            deviceClass: device.deviceClass
+        if (dattoDevice.deviceClass !== 'device') {
+          logger.debug(`Skipping non-device class item: ${dattoDevice.hostname} (${dattoDevice.deviceClass})`, 'datto-api', {
+            hostname: dattoDevice.hostname,
+            deviceClass: dattoDevice.deviceClass
           });
           continue;
         }
 
-        logger.debug(`Processing device: ${device.hostname} (ID: ${device.uid})`, 'datto-api', {
-          hostname: device.hostname,
-          deviceUid: device.uid
+        logger.debug(`Processing device: ${dattoDevice.hostname} (ID: ${dattoDevice.uid})`, 'datto-api', {
+          hostname: dattoDevice.hostname,
+          deviceUid: dattoDevice.uid
         });
         
         // Log warranty date from device object
-        logger.debug(`Warranty date from Datto RMM: ${device.warrantyDate || 'Not set'}`, 'datto-api', {
-          hostname: device.hostname,
-          warrantyDate: device.warrantyDate
+        logger.debug(`Warranty date from Datto RMM: ${dattoDevice.warrantyDate || 'Not set'}`, 'datto-api', {
+          hostname: dattoDevice.hostname,
+          warrantyDate: dattoDevice.warrantyDate
         });
         
-        const audit = await getDeviceAudit(client, device.uid);
+        const audit = await getDeviceAudit(client, dattoDevice.uid);
         
         // Rate limiting: Add delay after each audit call to respect API limits
         processedCount++;
         
         // Log progress every 50 devices
         if (processedCount % 50 === 0) {
-          logger.info(`Progress: ${processedCount}/${devices.length} devices processed (${Math.round(processedCount/devices.length*100)}%)`, 'datto-api', {
+          logger.info(`Progress: ${processedCount}/${dattoDevices.length} devices processed (${Math.round(processedCount/dattoDevices.length*100)}%)`, 'datto-api', {
             processedCount,
-            totalDevices: devices.length,
-            progressPercentage: Math.round(processedCount/devices.length*100)
+            totalDevices: dattoDevices.length,
+            progressPercentage: Math.round(processedCount/dattoDevices.length*100)
           });
         }
         
@@ -433,36 +433,36 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         let warrantyEndDate: string | undefined = undefined;
         
         // Check for warranty info in device data (primary) or audit data (fallback)
-        if (device.warrantyDate) {
-          warrantyEndDate = device.warrantyDate;
+        if (dattoDevice.warrantyDate) {
+          warrantyEndDate = dattoDevice.warrantyDate;
           logger.debug(`Found warranty end date from device data: ${warrantyEndDate}`, 'datto-api', {
-            hostname: device.hostname,
+            hostname: dattoDevice.hostname,
             warrantyEndDate
           });
         } else if (audit.warrantyInfo && audit.warrantyInfo.warrantyEndDate) {
           warrantyEndDate = audit.warrantyInfo.warrantyEndDate;
           logger.debug(`Found warranty end date from audit data: ${warrantyEndDate}`, 'datto-api', {
-            hostname: device.hostname,
+            hostname: dattoDevice.hostname,
             warrantyEndDate
           });
         }
 
         // Map to our normalized Device format
         const mappedDevice: Device = {
-          id: device.uid,
+          sourceDeviceId: dattoDevice.uid,
           serialNumber: audit.bios.serialNumber || '',
           manufacturer: manufacturer,
           model: audit.systemInfo.model || '',
-          hostname: device.hostname,
-          clientName: device.siteName,
+          hostname: dattoDevice.hostname,
+          clientName: dattoDevice.siteName,
           warrantyEndDate: warrantyEndDate
         };
 
         result.push(mappedDevice);
       } catch (error) {
-        logger.error(`Error processing device ${device.hostname} (${device.uid}): ${error}`, 'datto-api', {
-          hostname: device.hostname,
-          deviceUid: device.uid,
+        logger.error(`Error processing device ${dattoDevice.hostname} (${dattoDevice.uid}): ${error}`, 'datto-api', {
+          hostname: dattoDevice.hostname,
+          deviceUid: dattoDevice.uid,
           error: error instanceof Error ? error.message : String(error)
         });
         // Continue with next device even if this one fails
@@ -471,8 +471,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
 
     logger.info(`Completed processing ${result.length} devices from Datto RMM`, 'datto-api', {
       totalProcessed: result.length,
-      totalDevices: devices.length,
-      skippedNonDevices: devices.length - processedCount,
+      totalDevices: dattoDevices.length,
+      skippedNonDevices: dattoDevices.length - processedCount,
       processingTimeEstimateMinutes: Math.round((processedCount * auditDelayMs) / 60000 * 10) / 10
     });
 

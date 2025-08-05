@@ -226,7 +226,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
       `;
       
       const insertParams = [
-        device.id || device.serialNumber, // Use serialNumber as fallback ID
+        device.id || crypto.randomUUID(),
         device.serialNumber,
         device.manufacturer,
         device.model || null,

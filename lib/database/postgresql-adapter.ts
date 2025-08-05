@@ -122,7 +122,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         `;
 
         const insertParams = [
-          device.id || device.serialNumber, // Use serialNumber as fallback ID
+          device.id || crypto.randomUUID(),
           userId,
           device.serialNumber,
           device.manufacturer,

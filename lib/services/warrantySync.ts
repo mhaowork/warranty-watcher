@@ -46,6 +46,8 @@ export async function storeDevicesInPool(
   
   for (const device of devices) {
     try {
+      /*
+      Starting now we're storing the device as-is 2025-08-04
       const deviceToStore: Device = {
         ...device,
         id: device.id || device.serialNumber, // Ensure ID for database primary key
@@ -53,8 +55,9 @@ export async function storeDevicesInPool(
         // Preserve existing sourceDeviceId if available, otherwise use device.id from platform
         sourceDeviceId: device.sourceDeviceId || device.id, 
       };
+      */
 
-      await insertOrUpdateDevice(deviceToStore);
+      await insertOrUpdateDevice(device);
       successCount++;
       logger.debug(`Stored device: ${device.serialNumber}`, 'warranty-sync', { 
         serialNumber: device.serialNumber,

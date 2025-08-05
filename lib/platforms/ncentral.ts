@@ -47,7 +47,7 @@ interface NCentralDeviceItem {
 // Mock data for demo mode
 const mockDevices = [
   {
-    id: 'nc-1',
+    sourceDeviceId: 'nc-1',
     serialNumber: 'JH2RRW1',
     manufacturer: Manufacturer.DELL,
     model: 'OptiPlex 7070',
@@ -57,7 +57,7 @@ const mockDevices = [
     deviceClass: 'Desktop - Windows'
   },
   {
-    id: 'nc-2',
+    sourceDeviceId: 'nc-2',
     serialNumber: 'CZC8178FY9',
     manufacturer: Manufacturer.HP,
     model: 'EliteBook 850 G7',
@@ -67,7 +67,7 @@ const mockDevices = [
     deviceClass: 'Laptop - Windows'
   },
   {
-    id: 'nc-3',
+    sourceDeviceId: 'nc-3',
     serialNumber: 'CCKWN63',
     manufacturer: Manufacturer.DELL,
     model: 'Latitude 7400',
@@ -98,7 +98,7 @@ function setupMockAdapter(axiosInstance: AxiosInstance): void {
   // Mock devices endpoint
   mock.onGet(/.*\/api\/devices$/).reply(200, {
     data: mockDevices.map(device => ({
-      deviceId: device.id,
+      deviceId: device.sourceDeviceId,
       hostname: device.hostname,
       clientId: device.clientId,
       clientName: device.clientName
@@ -107,7 +107,7 @@ function setupMockAdapter(axiosInstance: AxiosInstance): void {
   
   // Mock individual device asset endpoints
   mockDevices.forEach(device => {
-    mock.onGet(new RegExp(`.*\/api\/devices\/${device.id}\/assets`)).reply(200, {
+    mock.onGet(new RegExp(`.*\/api\/devices\/${device.sourceDeviceId}\/assets`)).reply(200, {
       data: {
         _extra: {
           customer: {
@@ -123,7 +123,7 @@ function setupMockAdapter(axiosInstance: AxiosInstance): void {
         },
         device: {
           deleted: "false",
-          deviceid: device.id,
+          deviceid: device.sourceDeviceId,
           deviceclass: device.deviceClass
         },
         _links: {}
@@ -239,16 +239,16 @@ async function createNCentralClient(axiosInstance: AxiosInstance, apiToken: stri
 /**
  * Fetches device asset information
  */
-async function getDeviceAsset(client: AxiosInstance, deviceId: string): Promise<DeviceAsset> {
+async function getDeviceAsset(client: AxiosInstance, ncentralDeviceId: string): Promise<DeviceAsset> {
   try {
-    const response = await client.get(`/api/devices/${deviceId}/assets`);
+    const response = await client.get(`/api/devices/${ncentralDeviceId}/assets`);
     logger.debug('Device asset response received', 'ncentral-api', {
       responseData: response.data
     });
     return response.data; // Return full response which contains data property
   } catch (error) {
-    logger.error(`Error fetching N-central device asset for device ${deviceId}: ${error}`, 'ncentral-api', {
-      deviceId,
+    logger.error(`Error fetching N-central device asset for device ${ncentralDeviceId}: ${error}`, 'ncentral-api', {
+      ncentralDeviceId,
       error: error instanceof Error ? error.message : String(error)
     });
     throw error;
@@ -285,28 +285,28 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         
         // Based on the example response format, we know devices are in responseData.data
         const responseData = response.data;
-        const devices: NCentralDeviceItem[] = responseData.data;
+        const ncentralDevices: NCentralDeviceItem[] = responseData.data;
         
-        if (!Array.isArray(devices)) {
+        if (!Array.isArray(ncentralDevices)) {
           logger.error('Unexpected response format from N-Central', 'ncentral-api');
           throw new Error('Unexpected API response format');
         }
         
-        logger.debug(`Found ${devices.length} devices in response`, 'ncentral-api', {
-          deviceCount: devices.length,
+        logger.debug(`Found ${ncentralDevices.length} devices in response`, 'ncentral-api', {
+          deviceCount: ncentralDevices.length,
           pageNumber
         });
         
-        if (devices.length === 0) {
+        if (ncentralDevices.length === 0) {
           // No more devices to process
           hasMorePages = false;
           continue;
         }
         
         // Process each device
-        for (const device of devices) {
+        for (const ncentralDevice of ncentralDevices) {
           try {
-            const assetData = await getDeviceAsset(client, device.deviceId);
+            const assetData = await getDeviceAsset(client, ncentralDevice.deviceId);
             
             // Skip if deleted
             if (assetData.data.device?.deleted === 'true') {
@@ -319,7 +319,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
             
             // Map to our normalized Device format with just the essential fields for warranty lookup
             const mappedDevice: Device = {
-              id: assetData.data.device?.deviceid || device.deviceId,
+              sourceDeviceId: assetData.data.device?.deviceid || ncentralDevice.deviceId,
               serialNumber: assetData.data.computersystem?.serialnumber || '',
               manufacturer: manufacturer,
               model: assetData.data.computersystem?.model || '',
@@ -332,8 +332,8 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
             result.push(mappedDevice);
           } catch (error) {
             // Ignoring specific error details - just log the failure
-            logger.error(`Error processing device ${device.deviceId}: ${error}`, 'ncentral-api', {
-              deviceId: device.deviceId,
+            logger.error(`Error processing device ${ncentralDevice.deviceId}: ${error}`, 'ncentral-api', {
+              deviceId: ncentralDevice.deviceId,
               error: error instanceof Error ? error.message : String(error)
             });
             // Continue with next device even if this one fails
@@ -341,7 +341,7 @@ async function fetchDevicesUsingRealAPI(client: AxiosInstance): Promise<Device[]
         }
         
         // Check if there are more pages
-        if (devices.length < pageSize) {
+        if (ncentralDevices.length < pageSize) {
           hasMorePages = false;
         } else {
           pageNumber++;

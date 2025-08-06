@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "NEXT_PUBLIC_DEPLOYMENT_MODE=self-hosted next dev --turbopack",
     "dev:saas": "NEXT_PUBLIC_DEPLOYMENT_MODE=saas next dev --turbopack",
-    "build": "NEXT_PUBLIC_DEPLOYMENT_MODE=self-hosted next build",
-    "build:saas": "NEXT_PUBLIC_DEPLOYMENT_MODE=saas next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "stress-test": "tsx scripts/stress-test-devices.ts"

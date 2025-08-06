@@ -352,6 +352,22 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
     }
   }
 
+  /**
+   * Execute raw SQL query (for subscription management and other advanced features)
+   */
+  async executeQuery(query: string, params: unknown[] = []): Promise<{ rows: unknown[] }> {
+    const client = await this.getClient();
+    try {
+      const result = await client.query(query, params);
+      return { rows: result.rows };
+    } catch (error) {
+      logger.error('PostgreSQL query error:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }

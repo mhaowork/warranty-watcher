@@ -5,9 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/supabase/auth';
 import { isSaaSMode } from '@/lib/config';
-import { getSubscriptionOverview, createBillingPortal } from '@/lib/subscription/service';
+import { 
+  getSubscriptionOverview, 
+  createBillingPortal, 
+  getSubscriptionStatus
+} from '@/lib/subscription/service';
 import PricingPlans from '@/components/PricingPlans';
-import { CreditCard, Settings } from 'lucide-react';
+import { CreditCard, Settings, AlertTriangle } from 'lucide-react';
 
 export default async function BillingPage() {
   // Redirect if not in SaaS mode
@@ -21,11 +25,14 @@ export default async function BillingPage() {
   }
 
   const overview = await getSubscriptionOverview();
+  const subscriptionStatus = await getSubscriptionStatus();
   
+  // If no overview, something went wrong - but we can still show the page
   if (!overview) {
-    // User doesn't have a subscription yet, redirect to pricing
     redirect('/billing?tab=pricing');
   }
+
+  const isFreePlan = overview.plan === 'free';
 
   async function handleManageSubscription() {
     'use server';
@@ -47,6 +54,25 @@ export default async function BillingPage() {
         </p>
       </div>
 
+      {/* Cancellation Notice */}
+      {subscriptionStatus?.isScheduledForCancellation && (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900">Subscription Ending</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  Your subscription will end on{' '}
+                  <strong>{subscriptionStatus.currentPeriodEnd?.toLocaleDateString()}</strong>.
+                  You&apos;ll continue to have access to all features until then.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="plans" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="plans" className="flex items-center gap-2">
@@ -67,7 +93,7 @@ export default async function BillingPage() {
             </p>
           </div>
           <PricingPlans 
-            currentPlan={overview.subscription.plan}
+            currentPlan={overview.plan}
           />
         </TabsContent>
 
@@ -87,12 +113,12 @@ export default async function BillingPage() {
                     <div>
                       <p className="font-medium">Payment Method</p>
                       <p className="text-sm text-muted-foreground">
-                        {overview.subscription.plan === 'free' 
-                          ? 'No payment method required' 
+                        {isFreePlan 
+                          ? 'No payment method required for free plan' 
                           : 'Managed through Stripe'}
                       </p>
                     </div>
-                    {overview.subscription.plan !== 'free' && (
+                    {!isFreePlan && (
                       <Badge variant="outline">
                         Active
                       </Badge>
@@ -131,49 +157,82 @@ export default async function BillingPage() {
                     <div>
                       <p className="font-medium">Status</p>
                       <Badge className="capitalize">
-                        {overview.subscription.status}
+                        {isFreePlan ? 'Free' : overview.subscription?.status || 'Active'}
                       </Badge>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="font-medium">Current Period</p>
+                  {!isFreePlan && overview.subscription && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="font-medium">Current Period End</p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview.subscription.currentPeriodEnd.toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isFreePlan && (
+                    <div className="pt-4 border-t">
                       <p className="text-sm text-muted-foreground">
-                        {overview.subscription.currentPeriodEnd.toLocaleDateString()}
+                        You&apos;re currently on the free plan with access to {overview.planConfig.features.maxDevices} devices. 
+                        Upgrade to get unlimited devices and premium features.
                       </p>
                     </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Usage Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Usage</CardTitle>
+                <CardDescription>
+                  Monitor your plan usage and limits
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Auto-renewal</p>
+                      <p className="font-medium">Devices</p>
                       <p className="text-sm text-muted-foreground">
-                        {overview.subscription.cancelAtPeriodEnd ? 'Disabled' : 'Enabled'}
+                        {overview.usage.devices} of {overview.usage.maxDevices === Number.MAX_SAFE_INTEGER ? 'unlimited' : overview.usage.maxDevices} devices
                       </p>
                     </div>
+                    <Badge variant={overview.usage.devices > overview.usage.maxDevices ? 'destructive' : 'secondary'}>
+                      {overview.usage.maxDevices === Number.MAX_SAFE_INTEGER ? 'Unlimited' : `${Math.round((overview.usage.devices / overview.usage.maxDevices) * 100)}%`}
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Subscription Management */}
-            {overview.subscription.plan !== 'free' && (
+            {!isFreePlan && (
               <Card>
                 <CardHeader>
                   <CardTitle>Manage Subscription</CardTitle>
                   <CardDescription>
-                    Update payment methods, download invoices, or cancel your subscription
+                    Update payment methods, download invoices, and cancel your subscription
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Use Stripe&apos;s secure billing portal to manage your subscription, update payment methods, 
-                      download invoices, or cancel your subscription.
-                    </p>
                     <form action={handleManageSubscription}>
-                      <Button type="submit" variant="outline">
-                        Manage Subscription
+                      <Button type="submit" size="lg">
+                        Open Billing Portal
                       </Button>
                     </form>
+                    
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>• Update payment methods and billing information</p>
+                      <p>• Download invoices and billing history</p>
+                      <p>• Cancel subscription (access continues until period end)</p>
+                      <p>• Manage all subscription settings in Stripe&apos;s secure portal</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

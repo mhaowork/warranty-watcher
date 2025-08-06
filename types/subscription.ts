@@ -27,7 +27,6 @@ export interface SubscriptionPlanConfig {
 export type SubscriptionStatus = 
   | 'incomplete'
   | 'incomplete_expired'
-  | 'trialing'
   | 'active'
   | 'past_due'
   | 'canceled'
@@ -88,8 +87,7 @@ export type SubscriptionEventType =
   | 'subscription.updated'
   | 'subscription.deleted'
   | 'invoice.paid'
-  | 'invoice.payment_failed'
-  | 'customer.subscription.trial_will_end';
+  | 'invoice.payment_failed';
 
 export interface SubscriptionEvent {
   id: string;

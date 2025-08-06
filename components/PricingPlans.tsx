@@ -38,7 +38,7 @@ export default function PricingPlans({
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      // TODO: Show error message to user
+      throw error;
     } finally {
       setLoading(null);
     }

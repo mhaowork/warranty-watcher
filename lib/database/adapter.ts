@@ -99,6 +99,9 @@ export interface DatabaseAdapter {
   // Utility operations
   cleanupOldDevices(daysOld: number, userId?: string): Promise<number>;
   
+  // Raw query execution (for advanced features like subscriptions)
+  executeQuery(query: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
+  
   // Connection management
   close(): Promise<void>;
 } 

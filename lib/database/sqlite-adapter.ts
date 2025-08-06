@@ -386,6 +386,20 @@ export class SQLiteAdapter implements DatabaseAdapter {
     return result.changes;
   }
 
+  /**
+   * Execute raw SQL query (for subscription management and other advanced features)
+   * Note: In self-hosted mode, subscriptions are not used, but we provide this for consistency
+   */
+  async executeQuery(query: string, params: unknown[] = []): Promise<{ rows: unknown[] }> {
+    try {
+      const rows = await this.runQuery(query, params);
+      return { rows };
+    } catch (error) {
+      logger.error('SQLite query error:', error);
+      throw error;
+    }
+  }
+
   async close(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.db) {

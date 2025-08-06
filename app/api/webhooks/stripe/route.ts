@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { isSaaSMode } from '@/lib/config';
 import { validateWebhookSignature } from '@/lib/stripe/server';
+import { updateSubscription, deleteSubscription } from '@/lib/subscription/service';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   // Only handle webhooks in SaaS mode
@@ -21,14 +23,14 @@ export async function POST(request: NextRequest) {
 
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      console.error('STRIPE_WEBHOOK_SECRET not configured');
+      logger.error('STRIPE_WEBHOOK_SECRET not configured');
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
     }
 
     // Validate webhook signature
     const event = await validateWebhookSignature(body, signature, webhookSecret);
 
-    console.log('Received Stripe webhook:', event.type);
+    logger.info('Received Stripe webhook:', event.type);
 
     // Handle different event types
     switch (event.type) {
@@ -52,17 +54,13 @@ export async function POST(request: NextRequest) {
         await handleInvoicePaymentFailed(event);
         break;
       
-      case 'customer.subscription.trial_will_end':
-        await handleTrialWillEnd(event);
-        break;
-      
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        logger.info(`Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    logger.error('Webhook error:', error);
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }
@@ -71,43 +69,117 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleSubscriptionCreated(event: any) {
-  console.log('Subscription created:', event.data?.object?.id);
-  // TODO: Update user subscription in database
-  // const subscription = event.data.object;
-  // await updateUserSubscription(subscription);
+  const subscription = event.data.object;
+  logger.info('Subscription created:', subscription.id);
+
+  try {
+    // Get customer information to extract userId from metadata
+    const { getStripeCustomer } = await import('@/lib/stripe/server');
+    const { createPaidSubscription } = await import('@/lib/subscription/service');
+    
+    const customer = await getStripeCustomer(subscription.customer);
+    const userId = customer.metadata?.userId;
+    
+    if (!userId) {
+      logger.error('No userId found in customer metadata for subscription:', subscription.id);
+      return;
+    }
+
+    // Create subscription record in our database
+    await createPaidSubscription(
+      userId,
+      customer.email!,
+      'pro',
+      subscription.id,
+      subscription.items.data[0]?.price?.id,
+      new Date(subscription.current_period_start * 1000),
+      new Date(subscription.current_period_end * 1000)
+    );
+
+    logger.info('Subscription record created successfully:', subscription.id);
+  } catch (error) {
+    logger.error('Error handling subscription creation:', error);
+    throw error;
+  }
 }
 
 async function handleSubscriptionUpdated(event: any) {
-  console.log('Subscription updated:', event.data?.object?.id);
-  // TODO: Update user subscription in database
-  // const subscription = event.data.object;
-  // await updateUserSubscription(subscription);
+  const subscription = event.data.object;
+  logger.info('Subscription updated:', subscription.id);
+
+  try {
+    const customerId = subscription.customer;
+    
+    await updateSubscription(customerId, {
+      plan: 'pro',
+      status: subscription.status,
+      stripeSubscriptionId: subscription.id,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : undefined,
+    });
+
+    logger.info('Subscription updated in database');
+  } catch (error) {
+    logger.error('Error handling subscription update:', error);
+  }
 }
 
 async function handleSubscriptionDeleted(event: any) {
-  console.log('Subscription deleted:', event.data?.object?.id);
-  // TODO: Handle subscription cancellation
-  // const subscription = event.data.object;
-  // await handleSubscriptionCancellation(subscription);
+  const subscription = event.data.object;
+  logger.info('Subscription deleted:', subscription.id);
+
+  try {
+    // Find the user ID from subscription metadata or customer
+    // In our new model, deleting subscription = back to free plan
+    const userId = subscription.metadata?.userId;
+    
+    if (userId) {
+      await deleteSubscription(userId);
+      logger.info('Subscription record deleted - user back to free plan');
+    } else {
+      logger.warn('No userId found in subscription metadata, cannot delete subscription record');
+    }
+  } catch (error) {
+    logger.error('Error handling subscription deletion:', error);
+  }
 }
 
 async function handleInvoicePaymentSucceeded(event: any) {
-  console.log('Invoice payment succeeded:', event.data?.object?.id);
-  // TODO: Update subscription status, extend billing period
-  // const invoice = event.data.object;
-  // await handleSuccessfulPayment(invoice);
+  const invoice = event.data.object;
+  logger.info('Invoice payment succeeded:', invoice.id);
+
+  try {
+    // Update subscription status to active if it was past_due or incomplete
+    if (invoice.subscription) {
+      const customerId = invoice.customer;
+      await updateSubscription(customerId, {
+        status: 'active',
+      });
+      logger.info('Subscription reactivated after successful payment');
+    }
+  } catch (error) {
+    logger.error('Error handling successful payment:', error);
+  }
 }
 
 async function handleInvoicePaymentFailed(event: any) {
-  console.log('Invoice payment failed:', event.data?.object?.id);
-  // TODO: Handle failed payment, notify user
-  // const invoice = event.data.object;
-  // await handleFailedPayment(invoice);
-}
+  const invoice = event.data.object;
+  logger.info('Invoice payment failed:', invoice.id);
 
-async function handleTrialWillEnd(event: any) {
-  console.log('Trial will end:', event.data?.object?.id);
-  // TODO: Notify user about trial ending
-  // const subscription = event.data.object;
-  // await notifyTrialEnding(subscription);
-} 
+  try {
+    // Update subscription status to past_due
+    if (invoice.subscription) {
+      const customerId = invoice.customer;
+      await updateSubscription(customerId, {
+        status: 'past_due',
+      });
+      logger.info('Subscription marked as past_due after failed payment');
+      
+      // TODO: Send notification email to user about failed payment
+    }
+  } catch (error) {
+    logger.error('Error handling failed payment:', error);
+  }
+}

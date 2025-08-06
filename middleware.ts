@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
     // Define protected routes (routes that require authentication)
     const protectedPaths = ['/reports', '/api', '/logs'];
     const authPaths = ['/login', '/auth/callback'];
-    const publicPaths = ['/favicon.ico', '/public'];
+    const publicPaths = ['/favicon.ico', '/public', '/api/webhooks/stripe'];
 
     const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path));
     const isAuthPath = authPaths.some(path => pathname.startsWith(path));

@@ -1,10 +1,11 @@
 'use server';
 
-import { UserSubscription, SubscriptionPlan, UsageMetrics } from '@/types/subscription';
+import { UserSubscription, SubscriptionPlan } from '@/types/subscription';
 import { getCurrentUser } from '@/lib/supabase/auth';
 import { isSaaSMode } from '@/lib/config';
-import { getPlan, getPlanLimits, isWithinPlanLimits } from './plans';
+import { SUBSCRIPTION_PLANS } from './plans';
 import { createCheckoutSession, createBillingPortalSession } from '@/lib/stripe/server';
+import { getAllDevices } from '@/lib/database/service';
 
 /**
  * Get the current user's subscription
@@ -63,78 +64,34 @@ export async function createFreeSubscription(userId: string): Promise<UserSubscr
 
 /**
  * Get current usage metrics for the user
- * TODO: Implement proper database integration
  */
-export async function getCurrentUsageMetrics(): Promise<UsageMetrics> {
-  if (!isSaaSMode()) {
-    // Return dummy metrics for self-hosted mode
-    return {
-      deviceCount: 0,
-      clientCount: 0,
-      apiCallsThisMonth: 0,
-      lastUpdated: new Date(),
-    };
-  }
-
-  // TODO: Implement actual usage tracking
-  // For now, return mock data
-  return {
-    deviceCount: 5,
-    clientCount: 2,
-    apiCallsThisMonth: 100,
-    lastUpdated: new Date(),
-  };
-}
-
-/**
- * Update usage metrics (called when devices are added/removed)
- * TODO: Implement proper database integration
- */
-export async function updateUsageMetrics(): Promise<void> {
-  if (!isSaaSMode()) {
-    return; // No usage tracking in self-hosted mode
-  }
-
-  // TODO: Implement actual usage tracking
-  console.log('Usage metrics updated');
+export async function getDeviceCount(): Promise<number> {
+    const devices = await getAllDevices();
+    return devices.length;
 }
 
 /**
  * Check if user can perform an action based on plan limits
+ * Only enforces limits for free plan
  */
-export async function checkPlanLimits(action: 'add_device' | 'add_client'): Promise<{ allowed: boolean; reason?: string }> {
+export async function checkPlanLimits(): Promise<boolean> {
   if (!isSaaSMode()) {
-    return { allowed: true }; // No limits in self-hosted mode
+    return true; // No limits in self-hosted mode
   }
 
   const subscription = await getCurrentUserSubscription();
   if (!subscription) {
-    return { allowed: false, reason: 'No subscription found' };
+    return false;
   }
 
-  const usage = await getCurrentUsageMetrics();
-  const limits = getPlanLimits(subscription.plan);
-
-  switch (action) {
-    case 'add_device':
-      if (usage.deviceCount >= limits.maxDevices) {
-        return { 
-          allowed: false, 
-          reason: `Device limit reached (${limits.maxDevices}). Upgrade your plan to add more devices.` 
-        };
-      }
-      break;
-    case 'add_client':
-      if (usage.clientCount >= limits.maxClients) {
-        return { 
-          allowed: false, 
-          reason: `Client limit reached (${limits.maxClients}). Upgrade your plan to add more clients.` 
-        };
-      }
-      break;
+  // Only enforce limits for free plan
+  if (subscription.plan !== 'free') {
+    return true; // Pro and Enterprise are unlimited
   }
 
-  return { allowed: true };
+  const deviceCount = await getDeviceCount();
+
+  return deviceCount <= SUBSCRIPTION_PLANS.free.features.maxDevices;
 }
 
 /**
@@ -152,7 +109,7 @@ export async function createSubscriptionCheckout(
     throw new Error('No subscription found');
   }
 
-  const planConfig = getPlan(plan);
+  const planConfig = SUBSCRIPTION_PLANS[plan];
   const priceId = planConfig.stripePriceId;
 
   if (!priceId) {
@@ -201,24 +158,15 @@ export async function getSubscriptionOverview() {
   }
 
   const subscription = await getCurrentUserSubscription();
-  const usage = await getCurrentUsageMetrics();
 
   if (!subscription) {
     return null;
   }
 
-  const planConfig = getPlan(subscription.plan);
-  const limits = getPlanLimits(subscription.plan);
-  const withinLimits = isWithinPlanLimits(subscription.plan, {
-    deviceCount: usage.deviceCount,
-    clientCount: usage.clientCount,
-  });
+  const planConfig = SUBSCRIPTION_PLANS[subscription.plan];
 
   return {
     subscription,
-    usage,
     planConfig,
-    limits,
-    withinLimits,
   };
 } 

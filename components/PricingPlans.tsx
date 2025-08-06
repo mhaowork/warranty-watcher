@@ -120,13 +120,10 @@ export default function PricingPlans({
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <span className="text-sm">
-                        Up to {plan.features.maxDevices.toLocaleString()} devices
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">
-                        Up to {plan.features.maxClients} clients
+                        {plan.features.maxDevices === Number.MAX_SAFE_INTEGER 
+                          ? 'Unlimited devices' 
+                          : `Up to ${plan.features.maxDevices.toLocaleString()} devices`
+                        }
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

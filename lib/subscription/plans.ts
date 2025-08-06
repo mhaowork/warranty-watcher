@@ -12,8 +12,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
     price: 0,
     stripePriceId: '', // No Stripe price for free plan
     features: {
-      maxDevices: 50,
-      maxClients: 5,
+      maxDevices: 200,
       warrantyTracking: true,
       apiAccess: false,
       supportLevel: 'community',
@@ -28,8 +27,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
     price: 7500, // $75/month in cents
     stripePriceId: process.env.STRIPE_PRO_PRICE_ID || '',
     features: {
-      maxDevices: 5000,
-      maxClients: 100,
+      maxDevices: Number.MAX_SAFE_INTEGER, // Unlimited
       warrantyTracking: true,
       apiAccess: true,
       supportLevel: 'email',
@@ -44,8 +42,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
     price: 20000, // $200/month in cents
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || '',
     features: {
-      maxDevices: 100000,
-      maxClients: 1000,
+      maxDevices: Number.MAX_SAFE_INTEGER, // Unlimited
       warrantyTracking: true,
       apiAccess: true,
       supportLevel: 'priority',
@@ -67,28 +64,6 @@ export function getPlan(planId: SubscriptionPlan): SubscriptionPlanConfig {
  */
 export function getAllPlans(): SubscriptionPlanConfig[] {
   return Object.values(SUBSCRIPTION_PLANS);
-}
-
-/**
- * Get plan limits for usage validation
- */
-export function getPlanLimits(planId: SubscriptionPlan) {
-  const plan = getPlan(planId);
-  return {
-    maxDevices: plan.features.maxDevices,
-    maxClients: plan.features.maxClients,
-  };
-}
-
-/**
- * Check if usage is within plan limits
- */
-export function isWithinPlanLimits(
-  planId: SubscriptionPlan,
-  usage: { deviceCount: number; clientCount: number }
-): boolean {
-  const limits = getPlanLimits(planId);
-  return usage.deviceCount <= limits.maxDevices && usage.clientCount <= limits.maxClients;
 }
 
 

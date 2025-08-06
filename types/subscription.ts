@@ -5,7 +5,6 @@ export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
 
 export interface PlanFeatures {
   maxDevices: number;
-  maxClients: number;
   warrantyTracking: boolean;
   apiAccess: boolean;
   supportLevel: 'community' | 'email' | 'priority';

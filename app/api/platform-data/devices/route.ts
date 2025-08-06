@@ -5,8 +5,13 @@ import { fetchNCentralDevices } from '../../../../lib/platforms/ncentral';
 import { fetchHaloPSADevices } from '../../../../lib/platforms/halopsa';
 import { storeDevicesInPool } from '../../../../lib/services/warrantySync';
 import { logger } from '@/lib/logger';
+import { checkPlanLimits } from '@/lib/subscription/service';
 
 export async function POST(request: Request) {
+  if (!await checkPlanLimits()) {
+    return NextResponse.json({ error: 'Plan limit reached. Please upgrade to import more devices.' }, { status: 403 });
+  }
+
   try {
     const { platform, credentials } = await request.json();
     

@@ -2,8 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { isSaaSMode } from '@/lib/config';
-import { validateWebhookSignature } from '@/lib/stripe/server';
-import { updateSubscription, deleteSubscription } from '@/lib/subscription/service';
+import { getStripeCustomer, validateWebhookSignature } from '@/lib/stripe/server';
+import { updateSubscription, deleteSubscription, createPaidSubscription } from '@/lib/subscription/service';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
@@ -70,13 +70,8 @@ export async function POST(request: NextRequest) {
 
 async function handleSubscriptionCreated(event: any) {
   const subscription = event.data.object;
-  logger.info('Subscription created:', subscription.id);
 
   try {
-    // Get customer information to extract userId from metadata
-    const { getStripeCustomer } = await import('@/lib/stripe/server');
-    const { createPaidSubscription } = await import('@/lib/subscription/service');
-    
     const customer = await getStripeCustomer(subscription.customer);
     const userId = customer.metadata?.userId;
     
@@ -85,15 +80,19 @@ async function handleSubscriptionCreated(event: any) {
       return;
     }
 
-    // Create subscription record in our database
+    const subscriptionItem = subscription.items.data[0];
+    const currentPeriodStart = new Date(subscriptionItem.current_period_start * 1000);
+    const currentPeriodEnd = new Date(subscriptionItem.current_period_end * 1000);
+
     await createPaidSubscription(
       userId,
       customer.email!,
+      customer.id,
       'pro',
       subscription.id,
-      subscription.items.data[0]?.price?.id,
-      new Date(subscription.current_period_start * 1000),
-      new Date(subscription.current_period_end * 1000)
+      subscriptionItem.price?.id,
+      currentPeriodStart,
+      currentPeriodEnd
     );
 
     logger.info('Subscription record created successfully:', subscription.id);
@@ -105,19 +104,23 @@ async function handleSubscriptionCreated(event: any) {
 
 async function handleSubscriptionUpdated(event: any) {
   const subscription = event.data.object;
-  logger.info('Subscription updated:', subscription.id);
+  logger.info('Subscription update webhook received:', subscription.id);
 
   try {
     const customerId = subscription.customer;
+    const subscriptionItem = subscription.items.data[0];
+    const currentPeriodStart = new Date(subscriptionItem.current_period_start * 1000);
+    const currentPeriodEnd = new Date(subscriptionItem.current_period_end * 1000);
+    const canceledAt = subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : undefined;
     
     await updateSubscription(customerId, {
       plan: 'pro',
       status: subscription.status,
       stripeSubscriptionId: subscription.id,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart,
+      currentPeriodEnd,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : undefined,
+      canceledAt,
     });
 
     logger.info('Subscription updated in database');
@@ -128,19 +131,11 @@ async function handleSubscriptionUpdated(event: any) {
 
 async function handleSubscriptionDeleted(event: any) {
   const subscription = event.data.object;
-  logger.info('Subscription deleted:', subscription.id);
+  logger.info('Subscription deletion webhook received:', subscription.id);
 
   try {
-    // Find the user ID from subscription metadata or customer
-    // In our new model, deleting subscription = back to free plan
-    const userId = subscription.metadata?.userId;
-    
-    if (userId) {
-      await deleteSubscription(userId);
-      logger.info('Subscription record deleted - user back to free plan');
-    } else {
-      logger.warn('No userId found in subscription metadata, cannot delete subscription record');
-    }
+    await deleteSubscription(subscription.id);
+    logger.info('Subscription record deleted - user back to free plan');
   } catch (error) {
     logger.error('Error handling subscription deletion:', error);
   }
@@ -148,7 +143,7 @@ async function handleSubscriptionDeleted(event: any) {
 
 async function handleInvoicePaymentSucceeded(event: any) {
   const invoice = event.data.object;
-  logger.info('Invoice payment succeeded:', invoice.id);
+  logger.info('Invoice payment succeeded webhook received:', invoice.id);
 
   try {
     // Update subscription status to active if it was past_due or incomplete
@@ -166,7 +161,7 @@ async function handleInvoicePaymentSucceeded(event: any) {
 
 async function handleInvoicePaymentFailed(event: any) {
   const invoice = event.data.object;
-  logger.info('Invoice payment failed:', invoice.id);
+  logger.info('Invoice payment failed webhook received:', invoice.id);
 
   try {
     // Update subscription status to past_due

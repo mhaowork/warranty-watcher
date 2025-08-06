@@ -36,13 +36,8 @@ export default async function BillingPage() {
 
   async function handleManageSubscription() {
     'use server';
-    try {
-      const portalUrl = await createBillingPortal();
-      redirect(portalUrl);
-    } catch (error) {
-      console.error('Error creating billing portal:', error);
-      // TODO: Show error message
-    }
+    const portalUrl = await createBillingPortal();
+    redirect(portalUrl);
   }
 
   return (
@@ -57,7 +52,7 @@ export default async function BillingPage() {
       {/* Cancellation Notice */}
       {subscriptionStatus?.isScheduledForCancellation && (
         <Card className="mb-6 border-orange-200 bg-orange-50">
-          <CardContent className="pt-6">
+          <CardContent >
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
               <div className="flex-1">

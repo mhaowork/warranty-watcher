@@ -64,10 +64,10 @@ export async function createCheckoutSession(
     mode: 'subscription',
     success_url: successUrl,
     cancel_url: cancelUrl,
-    allow_promotion_codes: true,
-    billing_address_collection: 'required',
+    allow_promotion_codes: false,
+    billing_address_collection: 'auto',
     automatic_tax: {
-      enabled: true,
+      enabled: false,
     },
   });
 

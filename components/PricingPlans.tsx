@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Crown, Star } from 'lucide-react';
 import { getAllPlans, formatPrice } from '@/lib/subscription/plans';
-import { createSubscriptionCheckout } from '@/lib/subscription/service';
+import { createBillingPortal, createSubscriptionCheckout } from '@/lib/subscription/service';
 import { SubscriptionPlan } from '@/types/subscription';
+import { redirect } from 'next/navigation';
 
 interface PricingPlansProps {
   currentPlan?: SubscriptionPlan;
@@ -43,6 +44,13 @@ export default function PricingPlans({
       setLoading(null);
     }
   };
+
+  const handleDowngrade = async () => {
+    setLoading('free');
+    const portalUrl = await createBillingPortal();
+    redirect(portalUrl);
+    setLoading(null);
+  }
 
   const isCurrentPlan = (planId: SubscriptionPlan) => {
     return showCurrentPlan && currentPlan === planId;
@@ -162,8 +170,8 @@ export default function PricingPlans({
                   </Button>
                 ) : isFree ? (
                   <Button
-                    onClick={() => handleUpgrade(plan.id)}
-                    disabled={loading === plan.id}
+                    onClick={handleDowngrade}
+                    disabled={loading === 'free'}
                     className="w-full"
                     variant="outline"
                   >

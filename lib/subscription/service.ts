@@ -75,7 +75,8 @@ export async function getCurrentUserPlan(): Promise<SubscriptionPlan> {
  */
 export async function createPaidSubscription(
   userId: string, 
-  email: string, 
+  email: string,
+  stripeCustomerId: string,
   plan: SubscriptionPlan,
   stripeSubscriptionId: string,
   stripePriceId?: string,
@@ -89,21 +90,6 @@ export async function createPaidSubscription(
   const db = getDatabaseAdapter();
 
   try {
-    // Create a real Stripe customer (or get existing one)
-    let stripeCustomer;
-    
-    // Check if we already have a customer for this user
-    const existingResult = await db.executeQuery(`
-      SELECT stripe_customer_id FROM subscriptions WHERE user_id = $1 LIMIT 1
-    `, [userId]);
-    
-    if (existingResult.rows.length > 0) {
-      const existingRow = existingResult.rows[0] as Record<string, unknown>;
-      stripeCustomer = { id: existingRow.stripe_customer_id as string };
-    } else {
-      stripeCustomer = await createStripeCustomer(email, userId);
-    }
-
     // Insert or update subscription in database
     const result = await db.executeQuery(`
       INSERT INTO subscriptions (
@@ -126,7 +112,7 @@ export async function createPaidSubscription(
       userId,
       plan,
       'active',
-      stripeCustomer.id,
+      stripeCustomerId,
       stripeSubscriptionId,
       currentPeriodStart || new Date(),
       currentPeriodEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
@@ -154,10 +140,7 @@ export async function createPaidSubscription(
   }
 }
 
-/**
- * Delete subscription (downgrade to free plan)
- */
-export async function deleteSubscription(userId: string): Promise<void> {
+export async function deleteSubscription(stripeSubscriptionId: string): Promise<void> {
   if (!isSaaSMode()) {
     throw new Error('Subscriptions are only available in SaaS mode');
   }
@@ -165,7 +148,7 @@ export async function deleteSubscription(userId: string): Promise<void> {
   const db = getDatabaseAdapter();
   
   try {
-    await db.executeQuery(`DELETE FROM subscriptions WHERE user_id = $1`, [userId]);
+    await db.executeQuery(`DELETE FROM subscriptions WHERE stripe_subscription_id = $1`, [stripeSubscriptionId]);
   } catch (error) {
     console.error('Error deleting subscription:', error);
     throw new Error('Failed to delete subscription');

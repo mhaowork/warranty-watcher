@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:3000"  # Use HOST_PORT env var, default to 3000
     volumes:
       # Only mount the data directory for database persistence
       - ./data:/app/data

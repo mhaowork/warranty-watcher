@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
 
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
-      logger.error('STRIPE_WEBHOOK_SECRET not configured');
+      logger.error('STRIPE_WEBHOOK_SECRET not configured', 'stripe-webhook');
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
     }
 
     // Validate webhook signature
     const event = await validateWebhookSignature(body, signature, webhookSecret);
 
-    logger.info('Received Stripe webhook:', event.type);
+    logger.info('Received Stripe webhook', 'stripe-webhook', { eventType: event.type });
 
     // Handle different event types
     switch (event.type) {
@@ -55,12 +55,12 @@ export async function POST(request: NextRequest) {
         break;
       
       default:
-        logger.info(`Unhandled event type: ${event.type}`);
+        logger.info('Unhandled event type', 'stripe-webhook', { eventType: event.type });
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    logger.error('Webhook error:', error);
+    logger.error('Webhook handler failed', 'stripe-webhook', { error: error instanceof Error ? error.message : error });
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }
@@ -76,7 +76,10 @@ async function handleSubscriptionCreated(event: any) {
     const userId = customer.metadata?.userId;
     
     if (!userId) {
-      logger.error('No userId found in customer metadata for subscription:', subscription.id);
+      logger.error('No userId found in customer metadata', 'stripe-webhook', { 
+        subscriptionId: subscription.id,
+        customerId: customer.id 
+      });
       return;
     }
 
@@ -95,16 +98,23 @@ async function handleSubscriptionCreated(event: any) {
       currentPeriodEnd
     );
 
-    logger.info('Subscription record created successfully:', subscription.id);
+    logger.info('Subscription record created successfully', 'stripe-webhook', { 
+      subscriptionId: subscription.id,
+      userId,
+      plan: 'pro'
+    });
   } catch (error) {
-    logger.error('Error handling subscription creation:', error);
+    logger.error('Error handling subscription creation', 'stripe-webhook', { 
+      subscriptionId: subscription.id,
+      error: error instanceof Error ? error.message : error 
+    });
     throw error;
   }
 }
 
 async function handleSubscriptionUpdated(event: any) {
   const subscription = event.data.object;
-  logger.info('Subscription update webhook received:', subscription.id);
+  logger.info('Subscription update webhook received', 'stripe-webhook', { subscriptionId: subscription.id });
 
   try {
     const customerId = subscription.customer;
@@ -123,27 +133,38 @@ async function handleSubscriptionUpdated(event: any) {
       canceledAt,
     });
 
-    logger.info('Subscription updated in database');
+    logger.info('Subscription updated in database', 'stripe-webhook', { 
+      subscriptionId: subscription.id,
+      status: subscription.status 
+    });
   } catch (error) {
-    logger.error('Error handling subscription update:', error);
+    logger.error('Error handling subscription update', 'stripe-webhook', { 
+      subscriptionId: subscription.id,
+      error: error instanceof Error ? error.message : error 
+    });
   }
 }
 
 async function handleSubscriptionDeleted(event: any) {
   const subscription = event.data.object;
-  logger.info('Subscription deletion webhook received:', subscription.id);
+  logger.info('Subscription deletion webhook received', 'stripe-webhook', { subscriptionId: subscription.id });
 
   try {
     await deleteSubscription(subscription.id);
-    logger.info('Subscription record deleted - user back to free plan');
+    logger.info('Subscription record deleted - user back to free plan', 'stripe-webhook', { 
+      subscriptionId: subscription.id 
+    });
   } catch (error) {
-    logger.error('Error handling subscription deletion:', error);
+    logger.error('Error handling subscription deletion', 'stripe-webhook', { 
+      subscriptionId: subscription.id,
+      error: error instanceof Error ? error.message : error 
+    });
   }
 }
 
 async function handleInvoicePaymentSucceeded(event: any) {
   const invoice = event.data.object;
-  logger.info('Invoice payment succeeded webhook received:', invoice.id);
+  logger.info('Invoice payment succeeded webhook received', 'stripe-webhook', { invoiceId: invoice.id });
 
   try {
     // Update subscription status to active if it was past_due or incomplete
@@ -152,16 +173,22 @@ async function handleInvoicePaymentSucceeded(event: any) {
       await updateSubscription(customerId, {
         status: 'active',
       });
-      logger.info('Subscription reactivated after successful payment');
+      logger.info('Subscription reactivated after successful payment', 'stripe-webhook', { 
+        subscriptionId: invoice.subscription,
+        invoiceId: invoice.id 
+      });
     }
   } catch (error) {
-    logger.error('Error handling successful payment:', error);
+    logger.error('Error handling successful payment', 'stripe-webhook', { 
+      invoiceId: invoice.id,
+      error: error instanceof Error ? error.message : error 
+    });
   }
 }
 
 async function handleInvoicePaymentFailed(event: any) {
   const invoice = event.data.object;
-  logger.info('Invoice payment failed webhook received:', invoice.id);
+  logger.info('Invoice payment failed webhook received', 'stripe-webhook', { invoiceId: invoice.id });
 
   try {
     // Update subscription status to past_due
@@ -170,11 +197,17 @@ async function handleInvoicePaymentFailed(event: any) {
       await updateSubscription(customerId, {
         status: 'past_due',
       });
-      logger.info('Subscription marked as past_due after failed payment');
+      logger.info('Subscription marked as past_due after failed payment', 'stripe-webhook', { 
+        subscriptionId: invoice.subscription,
+        invoiceId: invoice.id 
+      });
       
       // TODO: Send notification email to user about failed payment
     }
   } catch (error) {
-    logger.error('Error handling failed payment:', error);
+    logger.error('Error handling failed payment', 'stripe-webhook', { 
+      invoiceId: invoice.id,
+      error: error instanceof Error ? error.message : error 
+    });
   }
 }

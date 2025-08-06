@@ -35,21 +35,6 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanConfig
       advancedReports: true,
     },
   },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    description: 'For large MSPs with advanced needs',
-    price: 20000, // $200/month in cents
-    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || '',
-    features: {
-      maxDevices: Number.MAX_SAFE_INTEGER, // Unlimited
-      warrantyTracking: true,
-      apiAccess: true,
-      supportLevel: 'priority',
-      exportFeatures: true,
-      advancedReports: true,
-    },
-  },
 };
 
 /**

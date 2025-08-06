@@ -1,7 +1,7 @@
 /**
  * Subscription Plans
  */
-export type SubscriptionPlan = 'free' | 'pro' | 'enterprise';
+export type SubscriptionPlan = 'free' | 'pro';
 
 export interface PlanFeatures {
   maxDevices: number;

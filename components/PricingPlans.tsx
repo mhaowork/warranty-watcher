@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Crown, Mail } from 'lucide-react';
+import { CheckCircle, Crown, Star } from 'lucide-react';
 import { getAllPlans, formatPrice } from '@/lib/subscription/plans';
 import { createSubscriptionCheckout } from '@/lib/subscription/service';
 import { SubscriptionPlan } from '@/types/subscription';
@@ -14,13 +14,13 @@ interface PricingPlansProps {
 }
 
 const planIcons = {
+  free: Star,
   pro: Crown,
-  enterprise: Mail,
 };
 
 const planGradients = {
+  free: 'from-gray-50 to-gray-100',
   pro: 'from-blue-50 to-blue-100',
-  enterprise: 'from-purple-50 to-purple-100',
 };
 
 export default function PricingPlans({ 
@@ -29,9 +29,7 @@ export default function PricingPlans({
 }: PricingPlansProps) {
   const [loading, setLoading] = useState<string | null>(null);
 
-  const allPlans = getAllPlans();
-  // Only show Pro and Enterprise plans (no Free plan)
-  const plans = allPlans.filter(plan => plan.id !== 'free');
+  const plans = getAllPlans();
 
   const handleUpgrade = async (plan: SubscriptionPlan) => {
     setLoading(plan);
@@ -46,10 +44,6 @@ export default function PricingPlans({
     }
   };
 
-  const handleContactUs = () => {
-    window.location.href = 'mailto:sales@warrantywatcher.com?subject=Enterprise%20Plan%20Inquiry';
-  };
-
   const isCurrentPlan = (planId: SubscriptionPlan) => {
     return showCurrentPlan && currentPlan === planId;
   };
@@ -62,7 +56,7 @@ export default function PricingPlans({
           const PlanIcon = planIcons[plan.id as keyof typeof planIcons];
           const gradient = planGradients[plan.id as keyof typeof planGradients];
           const isCurrent = isCurrentPlan(plan.id);
-          const isEnterprise = plan.id === 'enterprise';
+          const isFree = plan.id === 'free';
 
           return (
             <Card 
@@ -80,9 +74,9 @@ export default function PricingPlans({
               )}
 
               {/* Plan Header */}
-              <CardHeader className={`bg-gradient-to-r ${gradient} pb-8`}>
+              <CardHeader className={`bg-gradient-to-r ${gradient} pb-8 pt-8`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mt-2">
                     <PlanIcon className="h-6 w-6" />
                     <CardTitle className="text-xl">{plan.name}</CardTitle>
                   </div>
@@ -93,13 +87,15 @@ export default function PricingPlans({
                 
                 {/* Pricing */}
                 <div className="mt-4">
-                  {isEnterprise ? (
-                    <div>
-                      <div className="text-2xl font-bold">Contact Us</div>
-                      <div className="text-sm text-muted-foreground">
-                        Custom pricing for your needs
-                      </div>
-                    </div>
+                  {isFree ? (
+                     <div>
+                     <div className="flex items-baseline gap-1">
+                       <span className="text-3xl font-bold">
+                         Free
+                       </span>
+                     </div>
+                   </div>
+
                   ) : (
                     <div>
                       <div className="flex items-baseline gap-1">
@@ -164,13 +160,14 @@ export default function PricingPlans({
                   <Button disabled className="w-full">
                     Current Plan
                   </Button>
-                ) : isEnterprise ? (
-                  <Button 
-                    onClick={handleContactUs}
+                ) : isFree ? (
+                  <Button
+                    onClick={() => handleUpgrade(plan.id)}
+                    disabled={loading === plan.id}
                     className="w-full"
                     variant="outline"
                   >
-                    Contact Sales
+                    {loading === plan.id ? 'Processing...' : 'Downgrade to Free'}
                   </Button>
                 ) : (
                   <Button

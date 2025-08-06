@@ -94,44 +94,6 @@ export default async function BillingPage() {
 
         <TabsContent value="settings" className="space-y-6">
           <div className="grid gap-6">
-            {/* Billing Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Billing Information</CardTitle>
-                <CardDescription>
-                  Manage your billing details and payment methods
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Payment Method</p>
-                      <p className="text-sm text-muted-foreground">
-                        {isFreePlan 
-                          ? 'No payment method required for free plan' 
-                          : 'Managed through Stripe'}
-                      </p>
-                    </div>
-                    {!isFreePlan && (
-                      <Badge variant="outline">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Billing Email</p>
-                      <p className="text-sm text-muted-foreground">
-                        {user.email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Subscription Details */}
             <Card>
               <CardHeader>

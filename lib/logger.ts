@@ -38,8 +38,8 @@ class LogManager {
       this.logs = this.logs.slice(-this.maxLogs);
     }
 
-    // Console output for development
-    if (process.env.NODE_ENV === 'development') {
+    // Console output for development or when DEBUG_LOGS is enabled
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_LOGS === 'true') {
       const timestamp = new Date(logEntry.timestamp).toISOString();
       const sourceStr = source ? `[${source}]` : '';
       console.log(`${timestamp} ${level.toUpperCase()} ${sourceStr} ${message}`, metadata || '');

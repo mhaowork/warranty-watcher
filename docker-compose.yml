@@ -5,6 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_DEPLOYMENT_MODE=${NEXT_PUBLIC_DEPLOYMENT_MODE:-self-hosted}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     env_file:
       - .env
     ports:
@@ -15,5 +19,6 @@ services:
     environment:
       - NODE_ENV=production
       - DB_PATH=/app/data/warranty.db
+      - DEBUG_LOGS=${DEBUG_LOGS:-false}  # Enable debug logging when set to true
     restart: unless-stopped
     command: node .next/standalone/server.js 

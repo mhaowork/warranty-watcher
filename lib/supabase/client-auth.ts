@@ -26,10 +26,13 @@ export function createClientSupabaseClient() {
 export async function signInWithMicrosoft() {
   const supabase = createClientSupabaseClient();
   
+  // Use environment variable in production, fallback to window.location.origin in development
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'azure',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${baseUrl}/auth/callback`,
       // Include additional scopes for better enterprise account compatibility
       scopes: 'openid email profile User.Read offline_access',
       // Add additional parameters for enterprise compatibility

@@ -1,6 +1,6 @@
 {
   "name": "warrantywatcher",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "scripts": {
     "dev": "NEXT_PUBLIC_DEPLOYMENT_MODE=self-hosted next dev --turbopack",

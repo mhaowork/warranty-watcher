@@ -1,13 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Inter } from 'next/font/google';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import './globals.css';
 import { Button } from '../components/ui/button';
 import ClientFooter from '../components/ClientFooter';
 import { isSaaSMode } from '@/lib/config';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Warranty Watcher',
@@ -21,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="font-sans">
         <div className="flex flex-col min-h-screen">
           <header className="py-6 px-4 md:px-8 bg-white border-b">
             <div className="container mx-auto flex justify-between items-center">

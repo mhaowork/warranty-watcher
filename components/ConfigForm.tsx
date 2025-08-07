@@ -9,6 +9,7 @@ import { Platform } from '../types/platform';
 import { getManufacturerCredentials, getPlatformCredentials, saveManufacturerCredentials, savePlatformCredentials } from '../lib/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { logger } from '@/lib/logger';
+import { isSaaSMode } from '@/lib/config';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -199,7 +200,10 @@ export default function ConfigForm() {
       <CardHeader>
         <CardTitle>Configuration</CardTitle>
         <CardDescription>
-          Configure your manufacturer and platform credentials
+          {isSaaSMode() ? 
+            'Configure your platform credentials' : 
+            'Configure your manufacturer and platform credentials'
+          }
         </CardDescription>
         <div className="flex p-3 mt-2 border rounded-md bg-amber-50 border-amber-200">
           <AlertCircle className="h-5 w-5 mr-2 text-amber-500" />
@@ -209,99 +213,101 @@ export default function ConfigForm() {
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="manufacturer">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manufacturer">Manufacturers</TabsTrigger>
+        <Tabs defaultValue={isSaaSMode() ? "platform" : "manufacturer"}>
+          <TabsList className={`grid w-full ${isSaaSMode() ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {!isSaaSMode() && <TabsTrigger value="manufacturer">Manufacturers</TabsTrigger>}
             <TabsTrigger value="platform">Platforms</TabsTrigger>
           </TabsList>
           
-          {/* Manufacturer Tab */}
-          <TabsContent value="manufacturer">
-            <Form {...manufacturerForm}>
-              <form onSubmit={manufacturerForm.handleSubmit(onManufacturerSubmit)} className="space-y-8">
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Dell</h3>
+          {/* Manufacturer Tab - Only show in non-SaaS mode */}
+          {!isSaaSMode() && (
+            <TabsContent value="manufacturer">
+              <Form {...manufacturerForm}>
+                <form onSubmit={manufacturerForm.handleSubmit(onManufacturerSubmit)} className="space-y-8">
+                  <div className="space-y-6">
                     <div className="space-y-4">
-                      <FormField
-                        control={manufacturerForm.control}
-                        name={`${Manufacturer.DELL}.clientId`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Client ID (Optional)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter Dell client ID" {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              Your Dell client ID (optional)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={manufacturerForm.control}
-                        name={`${Manufacturer.DELL}.clientSecret`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Client Secret (Optional)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="Enter Dell client secret" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Your Dell client secret (optional)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <h3 className="text-lg font-medium">Dell</h3>
+                      <div className="space-y-4">
+                        <FormField
+                          control={manufacturerForm.control}
+                          name={`${Manufacturer.DELL}.clientId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client ID (Optional)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter Dell client ID" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Your Dell client ID (optional)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={manufacturerForm.control}
+                          name={`${Manufacturer.DELL}.clientSecret`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Client Secret (Optional)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter Dell client secret" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Your Dell client secret (optional)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">HP & Lenovo</h3>
                     <div className="space-y-4">
-                      <FormField
-                        control={manufacturerForm.control}
-                        name={`${Manufacturer.HP}.apiKey`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>API Key</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="Enter HP/Lenovo API Key" 
-                                {...field} 
-                                onChange={(e) => {
-                                  field.onChange(e);
-                                  // Sync with Lenovo field
-                                  const newValue = e.target.value;
-                                  const lenovoField = manufacturerForm.getValues();
-                                  lenovoField[Manufacturer.LENOVO].apiKey = newValue;
-                                  manufacturerForm.reset(lenovoField);
-                                }}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Your API Key for api.warrantywatcher.com (used for both HP and Lenovo)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <h3 className="text-lg font-medium">HP & Lenovo</h3>
+                      <div className="space-y-4">
+                        <FormField
+                          control={manufacturerForm.control}
+                          name={`${Manufacturer.HP}.apiKey`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>API Key</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter HP/Lenovo API Key" 
+                                  {...field} 
+                                  onChange={(e) => {
+                                    field.onChange(e);
+                                    // Sync with Lenovo field
+                                    const newValue = e.target.value;
+                                    const lenovoField = manufacturerForm.getValues();
+                                    lenovoField[Manufacturer.LENOVO].apiKey = newValue;
+                                    manufacturerForm.reset(lenovoField);
+                                  }}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Your API Key for api.warrantywatcher.com (used for both HP and Lenovo)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <Button type="submit">Save Manufacturer Settings</Button>
-              </form>
-            </Form>
-          </TabsContent>
+                  
+                  <Button type="submit">Save Manufacturer Settings</Button>
+                </form>
+              </Form>
+            </TabsContent>
+          )}
           
           {/* Platform Tab */}
           <TabsContent value="platform">

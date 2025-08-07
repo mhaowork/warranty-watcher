@@ -15,6 +15,8 @@ import {
 } from '../database/service';
 import { deviceToWarrantyInfo } from '../utils/deviceUtils';
 import { logger } from '@/lib/logger';
+import { getManufacturerCredentialsFromEnvs } from '@/lib/serverConfig';
+import { isSaaSMode } from '@/lib/config';
 
 export interface SyncOptions {
   writeBackToSource: boolean;
@@ -172,8 +174,11 @@ export async function markWarrantyAsWrittenBack(serialNumber: string): Promise<v
  */
 export async function fetchAndStoreDeviceWarranty(
   device: Device,
-  manufacturerCredentials: ManufacturerCredentials
+  manufacturerCredentials?: ManufacturerCredentials
 ): Promise<WarrantyInfo> {
+  if (!manufacturerCredentials || isSaaSMode()) {
+    manufacturerCredentials = await getManufacturerCredentialsFromEnvs();
+  }
   const warrantyInfo = deviceToWarrantyInfo(device);
   if (!device.serialNumber) {
     logger.warn(`Skipping device ID ${device.id} - no serial number.`, 'warranty-sync', {

@@ -17,9 +17,6 @@ export interface AppConfig {
     anonKey: string;
     serviceRoleKey?: string;
   };
-  auth: {
-    enabled: boolean;
-  };
 }
 
 function getDeploymentMode(): DeploymentMode {
@@ -42,9 +39,6 @@ function getConfig(): AppConfig {
       type: isSaaS ? 'postgresql' : 'sqlite',
       sqlitePath: process.env.DB_PATH || './data/warranty.db',
       postgresUrl: process.env.DATABASE_URL,
-    },
-    auth: {
-      enabled: isSaaS,
     },
   };
 
@@ -73,4 +67,3 @@ export const appConfig = getConfig();
 // Helper functions
 export const isSaaSMode = () => appConfig.deploymentMode === 'saas';
 export const isSelfHostedMode = () => appConfig.deploymentMode === 'self-hosted';
-export const isAuthEnabled = () => appConfig.auth.enabled; 

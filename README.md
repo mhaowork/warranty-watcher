@@ -41,7 +41,7 @@ Don't want to self-host? Try it on cloud here: https://warrantywatcher.com
 - ⏳ Apple (planned)
 
 
-## Getting Started
+## Getting Started (Self-Hosting)
 
 ### Prerequisites
 

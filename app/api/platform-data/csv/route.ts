@@ -7,7 +7,6 @@ import { checkPlanLimits } from '@/lib/subscription/service';
 
 // TODO: merge this with the platform-data/devices/route.ts file
 export async function POST(req: NextRequest) {
-  console.log('checkPlanLimits for csv import');
   if (!await checkPlanLimits()) {
     return NextResponse.json({ error: 'Plan limit reached. Please upgrade to import more devices.' }, { status: 403 });
   }

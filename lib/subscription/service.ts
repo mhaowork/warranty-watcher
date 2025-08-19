@@ -215,6 +215,10 @@ export async function getDeviceCount(): Promise<number> {
  * Check if current usage is within plan limits
  */
 export async function checkPlanLimits(): Promise<boolean> {
+  if (!isSaaSMode()) {
+    return true;
+  }
+
   const plan = await getCurrentUserPlan();
   const deviceCount = await getDeviceCount();
 

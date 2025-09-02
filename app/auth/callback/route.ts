@@ -4,7 +4,11 @@ import { appConfig } from '@/lib/config';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const url = new URL(request.url);
+  const searchParams = url.searchParams;
+
+  // Use explicit application URL from environment
+  const origin = process.env.NEXT_PUBLIC_APP_URL!;
   const code = searchParams.get('code');
   
   // Handle OAuth error parameters first

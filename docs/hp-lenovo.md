@@ -6,6 +6,6 @@ This leverages a proxied service api.warrantywatcher.com to query HP / Lenovo se
 
 For now, you can use the following key to access the service:
 
-`bza98Nyy7PHVNjDwZKeTRqapvu8EViStXNrQUch-M6I` expires 2025-10-01. I will figure out a better way to proxy the queries before then.
+`bza98Nyy7PHVNjDwZKeTRqapvu8EViStXNrQUch-M6I` expires 2026-06-01. I will figure out a better way to proxy the queries before then.
 
 Set it under on the configure page.

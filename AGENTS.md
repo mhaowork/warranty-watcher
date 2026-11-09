@@ -90,6 +90,18 @@ Follow the .cursorrules patterns:
 ## Environment Variables
 - `DB_PATH` - SQLite database location (default: `data/warranty.db`)
 
+## Hosting (as of 2026-11-09)
+- `demo.warrantywatcher.com`: public demo, Coolify app `dsw088kss4sc88sc00w0s0g0` (project "Warranty Watcher") on the
+  Hostinger VPS, built from this repo's `main` with `NEXT_PUBLIC_DEPLOYMENT_MODE=self-hosted`.
+- `api.warrantywatcher.com`: HP/Lenovo lookup proxy (`mhaowork/warranty-watcher-api`, Coolify app
+  `b4ssgcsgco0sw0okw4k4kwgk`); `lib/manufacturers/hp.ts` and `lenovo.ts` call it.
+- `warrantywatcher.com`: one-page marketing site on Lovable, not in this repo.
+- The paid hosted app (`app.warrantywatcher.com`, SaaS mode with Supabase and Stripe) was shut down on 2026-11-09: its
+  Supabase project no longer exists, the Coolify app and DNS record were deleted, and the Stripe product and price were
+  archived. The SaaS-mode code (`NEXT_PUBLIC_DEPLOYMENT_MODE=saas`, `lib/supabase`, `lib/stripe`, `lib/subscription`,
+  billing and login pages, the PostgreSQL adapter) is still in the repo because it is woven through the shared database
+  and UI code; nothing runs it now. Self-hosted mode is the default and does not touch it.
+
 ## Docker Deployment
 - Production: `docker run -p 3000:3000 -v ./data:/app/data -e DB_PATH=/app/data/warranty.db mhaowork/warrantywatcher:latest`
 - Development: `docker-compose up -d`

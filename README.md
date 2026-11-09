@@ -9,8 +9,6 @@ Demo: https://demo.warrantywatcher.com/ (DO NOT ENTER YOUR DATA)
 
 View Example Report: [Example Report](public/warranty-watcher-example-report-2025-06-03.pdf)
 
-Don't want to self-host? Try it on cloud here: https://warrantywatcher.com
-
 ## Features
 
 - **Multi-Platform Integration:** Connect to various IT management platforms to retrieve device information
